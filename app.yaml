@@ -1,0 +1,20 @@
+runtime: python27
+api_version: 1
+threadsafe: true
+
+handlers:
+- url: /css
+  static_dir: css
+- url: /javascript
+  static_dir: javascript
+- url: /.*
+  script: main.app
+
+libraries:
+- name: webapp2
+  version: latest
+- name: ssl
+  version: latest
+
+env_variables:
+   GAE_USE_SOCKETS_HTTPLIB : 'anyvalue'
