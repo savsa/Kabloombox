@@ -1,15 +1,13 @@
 import webapp2
 import jinja2
-import os
 import requests
-import time
 import json
 import base64
+import os
+import time
 
 import praw
-
 import config
-
 
 from google.appengine.api import users
 from google.appengine.ext import ndb
@@ -21,14 +19,15 @@ requests_toolbelt.adapters.appengine.monkeypatch()
 CLIENT_ID = config.CLIENT_ID
 CLIENT_SECRET = config.CLIENT_SECRET
 
-SPOTIFY_URL = "open.spotify.com/user/"
 
 #Spotify URLs
 SPOTIFY_AUTH_URL = "https://accounts.spotify.com/authorize"
 SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token"
 SPOTIFY_API_BASE_URL = "https://api.spotify.com"
+SPOTIFY_URL = "open.spotify.com/user/"
 
-redirect_uri = "http://localhost:8080/"
+
+redirect_uri = "http://localhost:8080/search"
 scope = "user-library-read user-read-private user-read-email"
 
 class Track(ndb.Model):
@@ -43,9 +42,6 @@ class Track(ndb.Model):
     instrumentalness = ndb.FloatProperty()
     liveness = ndb.FloatProperty()
 
-
-
-
 env = jinja2.Environment(
     loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
     extensions=['jinja2.ext.autoescape'],
@@ -53,8 +49,29 @@ env = jinja2.Environment(
 
 class HomePage(webapp2.RequestHandler):
     def get(self):
+        template = env.get_template("templates/home.html")
+        self.response.write(template.render())
+
+
+class Search(webapp2.RequestHandler):
+    def get(self):
 
         code = self.request.get("code")
+        print('code code code ' + code)
+
+        template_vars = {
+            "code" : code,
+        }
+
+        template = env.get_template("templates/search.html")
+        self.response.write(template.render(template_vars))
+
+
+
+
+    def post(self):
+        code = self.request.get("code")
+        language = self.request.get("language")
 
         if code:
             payload = {
@@ -74,30 +91,25 @@ class HomePage(webapp2.RequestHandler):
                 access_token = token["access_token"]
                 refresh_token = token["refresh_token"]
 
-                scan_subreddit(access_token)
+                tracks = scan_subreddit(access_token, language)
+                print(tracks)
 
-        templateVars = {
 
-        }
 
-        template = env.get_template("templates/home.html")
-        self.response.write(template.render(templateVars))
+        template = env.get_template("templates/search.html")
+        self.response.write(template.render())
 
-    def post(self):
-        pass
-        # response = json.dumps(post_request)
-        #
-        # if response:
-        #     print("RESPONSE RESPONSE RESPONSE REPONSE: " + response)
 
-def scan_subreddit(access_token):
+
+def get_playlists_track_ids(playlist_ids, access_token, ):
+
+
+def scan_subreddit(access_token, language):
 
     #subreddit = self.request.get("subreddit")
 
-    spotify_audio_features_link = "https://api.spotify.com/v1/audio-features/"
-
     reddit = praw.Reddit("bot1")
-    subreddit = reddit.subreddit("thestereo")
+    subreddit = reddit.subreddit(language)
 
     playlist_ids = []
 
@@ -109,61 +121,58 @@ def scan_subreddit(access_token):
             playlist_ids.append(url)
 
 
-    track_ids = []
+    # get a playlist's tracks
+    #track_ids = []
+
+    track_ids = get_playlists_track_ids()
 
     for id in playlist_ids:
-        # get a playlist's tracks
+
         playlists_tracks_link = "http://api.spotify.com/v1/playlists/{}/tracks".format(id)
 
         headers = { "Authorization" : "Bearer " + access_token }
         params = { "fields" : "items(track(id))" }
 
         tracks_response = requests.get(playlists_tracks_link, headers=headers, params=params)
-        tracks = tracks_response.json()
+        tracks_json = tracks_response.json()
 
-    #
-
-    # payload = { "id" : playlist_ids[0] }
-    # headers = { "Authorization" : "Bearer " + access_token }
-    #
-    # features_response = requests.get(spotify_audio_features_link, data=payload, headers=headers)
-    # features = features_response.json()
-    #
-    # print('FEATURES: ')
-    # print(features)
-
-    # track = Track(
-    #     track_id=playlist_ids[0],
-    #     language="german",
-    #     loudness=features["loudness"],
-    #     tempo=features["tempo"],
-    #     danceability=features["danceability"],
-    #     energy=features["energy"],
-    #     acousticness=features["acousticness"],
-    #     instrumentalness=features["instrumentalness"],
-    #     liveness=features["liveness"],
-    # )
-
-    # for id in spotify_ids:
-    #     payload = { "id" : id }
-    #     headers = { "Authorization" : "Bearer " + access_token }
-    #
-    #     features_response = requests.get(spotify_audio_features_link, data=payload, headers=headers)
-    #     features = features_response.json()
-    #
-    #     track = Track(
-    #         track_id=id,
-    #         language="german",
-    #         loudness=features["loudness"],
-    #         tempo=features["tempo"],
-    #         danceability=features["danceability"],
-    #         energy=features["energy"],
-    #         acousticness=features["acousticness"],
-    #         instrumentalness=features["instrumentalness"],
-    #         liveness=features["liveness"],
-    #     )
+        track_ids = [element["track"]["id"] for element in tracks_json["items"]]
 
 
+
+    # get analysis of each track
+    tracks = []
+
+    for id in track_ids:
+
+        spotify_audio_features_link = "http://api.spotify.com/v1/audio-features/{}".format(id)
+
+        headers = { "Authorization" : "Bearer " + access_token }
+
+        features_response = requests.get(spotify_audio_features_link, headers=headers)
+        features = features_response.json()
+
+        if features:
+
+            track = Track(
+                track_id=id,
+                language=subreddit,
+                loudness=features["loudness"],
+                tempo=features["tempo"],
+                danceability=features["danceability"],
+                energy=features["energy"],
+                acousticness=features["acousticness"],
+                instrumentalness=features["instrumentalness"],
+                liveness=features["liveness"],
+            )
+
+            tracks.append(track)
+
+        time.sleep(.2)
+
+    print(tracks)
+
+    return tracks
 
 
 
@@ -178,20 +187,20 @@ class Login(webapp2.RequestHandler):
             "scope" : scope,
         }
 
-        url = """{}?client_id={}&response_type=code&redirect_uri={}&scope={}""".format(SPOTIFY_AUTH_URL, CLIENT_ID,redirect_uri, scope)
+        url = "{}?client_id={}" \
+                "&response_type=code" \
+                "&redirect_uri={}" \
+                "&scope={}".format(SPOTIFY_AUTH_URL, CLIENT_ID, redirect_uri, scope)
 
 
         self.redirect(url)
 
-        templateVars = {
-
-        }
-
         template = env.get_template("templates/login.html")
-        self.response.write(template.render(templateVars))
+        self.response.write(template.render())
 
 
 app = webapp2.WSGIApplication([
     ('/', HomePage),
     ('/login', Login),
+    ('/search', Search),
 ], debug=True)
