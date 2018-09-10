@@ -17,7 +17,8 @@ requests_toolbelt.adapters.appengine.monkeypatch()
 
 # TODO:
 # - work with spotify link in main post and on wiki, not just in comments
-# - make sure no repeats in songs
+# X make sure no repeats in songs
+# X works if multiple links in comment
 # X make sure works if invalid spotify link
 # X make sure works with replies to comments
 # X works with shortened text url (video *here*)
@@ -27,7 +28,7 @@ requests_toolbelt.adapters.appengine.monkeypatch()
 CLIENT_ID = config.CLIENT_ID
 CLIENT_SECRET = config.CLIENT_SECRET
 
-#Spotify URLs
+# Spotify URLs
 SPOTIFY_AUTH_URL = "https://accounts.spotify.com/authorize"
 SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token"
 SPOTIFY_API_BASE_URL = "https://api.spotify.com"
@@ -69,7 +70,9 @@ def get_playlists_track_ids(playlist_ids, access_token):
         tracks_response = requests.get(playlists_tracks_link, headers=headers, params=params)
         tracks_json = tracks_response.json()
 
-        if len(tracks_json) > 1: # valid playlist URL
+        # Spotify limits to only 100 songs per request, so set starting location
+        # in playlist to +100 every loop to eventually get all songs
+        if len(tracks_json) > 1: # if valid playlist URL
             for i in range((tracks_json["total"] / 100) + 1):
                 try:
                     tracks_response = requests.get(playlists_tracks_link, headers=headers, params=params)
@@ -78,7 +81,7 @@ def get_playlists_track_ids(playlist_ids, access_token):
                         if element["track"]["id"] and element["track"]["id"] not in track_ids: # make sure no repeats
                             track_ids.append(element["track"]["id"])
                     params["offset"] += 100
-                except KeyError:
+                except KeyError: # if no track id is found
                     continue
 
     return track_ids
@@ -86,16 +89,13 @@ def get_playlists_track_ids(playlist_ids, access_token):
 
 def create_tracks_from_audio_analysis(track_ids, language, access_token):
     tracks = []
-
     for id in track_ids:
-        print("---------TRACK ID: " + id + "---------")
         spotify_audio_features_link = "http://api.spotify.com/v1/audio-features/{}".format(id)
         headers = { "Authorization" : "Bearer " + access_token }
         features_response = requests.get(spotify_audio_features_link, headers=headers)
         features = features_response.json()
 
         if features:
-            print(features)
             track = Track(
                 track_id=id,
                 language=language,
@@ -109,7 +109,6 @@ def create_tracks_from_audio_analysis(track_ids, language, access_token):
                 valence=features["valence"],
                 mode=features["mode"])
             tracks.append(track)
-
         time.sleep(.8)
 
     return tracks
@@ -121,35 +120,45 @@ def scan_subreddit(language, access_token):
 
     playlist_ids = []
     for submission in subreddit.search("spotify"):
-        print(submission.title.encode("utf-8"))
-
+        # print(submission.title.encode("utf-8"))
         # find spotify playlist url in submission
-        if SPOTIFY_URL in submission.selftext:
-            start = submission.selftext.find("playlist/") + 9
-            end = submission.selftext.find("playlist/") + 31
-            url = submission.selftext[start:end]
-            playlist_ids.append(url)
-            print(url)
+        new_start = 0
+        while True: # loop until all spotify links are found in submission
+            if SPOTIFY_URL in submission.selftext[new_start:]:
+                start = submission.selftext.find("playlist/", new_start) + 9
+                end = submission.selftext.find("playlist/", new_start) + 31
+                url = submission.selftext[start:end]
+                if url not in playlist_ids:
+                    playlist_ids.append(url)
+                new_start = end
+            else:
+                break
 
         # find spotify playlist url if submission is only a link
         if SPOTIFY_URL in submission.url:
             start = submission.url.find("playlist/") + 9
             end = submission.url.find("playlist/") + 31
             url = submission.url[start:end]
-            playlist_ids.append(url)
-            print("URL------------")
+            if url not in playlist_ids:
+                playlist_ids.append(url)
             print(url)
 
         # find spotify playlist url in submission's comments
         submission.comments.replace_more(limit=None)
         comments = submission.comments.list()
         for comment in comments:
-            if SPOTIFY_URL in comment.body:
-                start = comment.body.find("playlist/") + 9
-                end = comment.body.find("playlist/") + 31
-                url = comment.body[start:end]
-                playlist_ids.append(url)
-                print(url)
+            new_start = 0
+            while True: # loop until all spotify links are found in comment
+                if SPOTIFY_URL in comment.body[new_start:]:
+                    start = comment.body.find("playlist/", new_start) + 9
+                    end = comment.body.find("playlist/", new_start) + 31
+                    url = comment.body[start:end]
+                    if url not in playlist_ids:
+                        playlist_ids.append(url)
+                    new_start = end
+                else:
+                    break
+        print(playlist_ids)
         time.sleep(3)
 
     # get a playlist's tracks
@@ -199,7 +208,6 @@ class Search(webapp2.RequestHandler):
                 refresh_token = token["refresh_token"]
 
                 tracks = scan_subreddit(language, access_token)
-                print('alkadjflkdfj')
                 print("LENGTH OF TRACKS: " + str(len(tracks)))
 
         template = env.get_template("templates/search.html")
