@@ -16,5 +16,8 @@ libraries:
 - name: ssl
   version: latest
 
+builtins:
+- deferred: on
+
 env_variables:
    GAE_USE_SOCKETS_HTTPLIB : 'anyvalue'
