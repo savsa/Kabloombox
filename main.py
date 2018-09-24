@@ -224,7 +224,7 @@ def scan_subreddit(language, access_token):
     deferred.defer(get_playlists_track_ids, language, access_token)
     # get analysis of each track using the tracks' ids
     deferred.defer(create_tracks_from_audio_analysis, language, access_token)
-    logging.debug("tracks got")
+    logging.debug("Tracks got")
 
 
 # Pages
