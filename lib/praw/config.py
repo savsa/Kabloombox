@@ -1,5 +1,5 @@
 """Provides the code to load PRAW's configuration file `praw.ini`."""
-from threading import Lock 
+from threading import Lock
 import os
 import sys
 
