@@ -27,8 +27,12 @@ requests_toolbelt.adapters.appengine.monkeypatch()
 # X make sure works if self uploaded spotify song
 
 # Client Keys
-CLIENT_ID = config.CLIENT_ID
-CLIENT_SECRET = config.CLIENT_SECRET
+CLIENT_ID_SPOTIFY = config.CLIENT_ID_SPOTIFY
+CLIENT_SECRET_SPOTIFY = config.CLIENT_SECRET_SPOTIFY
+
+CLIENT_ID_REDDIT = config.CLIENT_ID_REDDIT
+CLIENT_SECRET_REDDIT = config.CLIENT_SECRET_REDDIT
+USER_AGENT_REDDIT = config.USER_AGENT_REDDIT
 
 # Spotify URLs
 SPOTIFY_AUTH_URL = "https://accounts.spotify.com/authorize"
@@ -36,7 +40,8 @@ SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token"
 SPOTIFY_API_BASE_URL = "https://api.spotify.com"
 SPOTIFY_URL = "open.spotify.com/user/"
 
-redirect_uri = "http://localhost:8080/search"
+# redirect_uri = "http://localhost:8080/search"
+redirect_uri = "https://kabloombox-219016.appspot.com/search"
 scope = "user-library-read user-read-private user-read-email"
 
 env = jinja2.Environment(
@@ -181,7 +186,8 @@ def find_url_in_comments(playlist_ids_local, playlist_ids_datastore, subreddit, 
 # Scrape specified subreddit for all Spotify links, and use that data to get
 # playlist ids, track ids, and audio analyses of each track
 def scan_subreddit(language, access_token):
-    reddit = praw.Reddit("bot1")
+    # reddit = praw.Reddit("bot1")
+    reddit = praw.Reddit(client_id=CLIENT_ID_REDDIT, client_secret=CLIENT_SECRET_REDDIT, user_agent='thestereobot0.1')
     subreddit = reddit.subreddit(language)
     playlist_ids_local = []
     playlist_ids_datastore = []
@@ -256,11 +262,12 @@ class Search(webapp2.RequestHandler):
                 "redirect_uri" : redirect_uri,
             }
 
-            headers = { "Authorization" : "Basic " + base64.b64encode(CLIENT_ID + ":" + CLIENT_SECRET) }
+            headers = { "Authorization" : "Basic " + base64.b64encode(CLIENT_ID_SPOTIFY + ":" + CLIENT_SECRET_SPOTIFY) }
             response = requests.post(SPOTIFY_TOKEN_URL, data=payload, headers=headers)
             token = response.json()
 
             if token:
+                print(token)
                 access_token = token["access_token"]
                 refresh_token = token["refresh_token"]
 
@@ -273,7 +280,7 @@ class Search(webapp2.RequestHandler):
 class Login(webapp2.RequestHandler):
     def get(self):
         headers = {
-            "client_id" : CLIENT_ID,
+            "client_id" : CLIENT_ID_SPOTIFY,
             "response_type" : "code",
             "redirect_uri" : redirect_uri,
             "scope" : scope,
@@ -282,7 +289,7 @@ class Login(webapp2.RequestHandler):
         url = "{}?client_id={}" \
                 "&response_type=code" \
                 "&redirect_uri={}" \
-                "&scope={}".format(SPOTIFY_AUTH_URL, CLIENT_ID, redirect_uri, scope)
+                "&scope={}".format(SPOTIFY_AUTH_URL, CLIENT_ID_SPOTIFY, redirect_uri, scope)
 
         self.redirect(url)
 
