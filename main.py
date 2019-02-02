@@ -40,8 +40,8 @@ SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token"
 SPOTIFY_API_BASE_URL = "https://api.spotify.com"
 SPOTIFY_URL = "open.spotify.com/user/"
 
-# redirect_uri = "http://localhost:8080/search"
-redirect_uri = "https://kabloombox-219016.appspot.com/search"
+redirect_uri = "http://localhost:8080/search"
+# redirect_uri = "https://kabloombox-219016.appspot.com/search"
 scope = "user-library-read user-read-private user-read-email"
 
 env = jinja2.Environment(
@@ -187,7 +187,7 @@ def find_url_in_comments(playlist_ids_local, playlist_ids_datastore, subreddit, 
 # playlist ids, track ids, and audio analyses of each track
 def scan_subreddit(language, access_token):
     # reddit = praw.Reddit("bot1")
-    reddit = praw.Reddit(client_id=CLIENT_ID_REDDIT, client_secret=CLIENT_SECRET_REDDIT, user_agent='thestereobot0.1')
+    reddit = praw.Reddit(user_agent='thestereobot0.1', client_id=CLIENT_ID_REDDIT, client_secret=CLIENT_SECRET_REDDIT, disable_update_check=True)
     subreddit = reddit.subreddit(language)
     playlist_ids_local = []
     playlist_ids_datastore = []
@@ -235,7 +235,7 @@ def scan_subreddit(language, access_token):
 
 # Pages
 
-class HomePage(webapp2.RequestHandler):
+class Home(webapp2.RequestHandler):
     def get(self):
         template = env.get_template("templates/home.html")
         self.response.write(template.render())
@@ -297,8 +297,27 @@ class Login(webapp2.RequestHandler):
         self.response.write(template.render())
 
 
+
+class HomePage(webapp2.RequestHandler):
+    def get(self):
+        template = env.get_template("templates/homePage.html")
+        self.response.write(template.render())
+
+class SearchPage(webapp2.RequestHandler):
+    def get(self):
+        template = env.get_template("templates/searchPage.html")
+        self.response.write(template.render())
+
+class LoginPage(webapp2.RequestHandler):
+    def get(self):
+        template = env.get_template("templates/loginPage2.html")
+        self.response.write(template.render())
+
+
 app = webapp2.WSGIApplication([
-    ('/', HomePage),
+    # ('/', HomePage),
+    ('/', LoginPage),
     ('/login', Login),
     ('/search', Search),
+    # ('/loginPage', LoginPage),
 ], debug=True)
