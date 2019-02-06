@@ -68,6 +68,7 @@ img {
     display: flex;
     position: absolute;
     width: 1200px;
+    /* width: 75%; */
     height: 800px;
     border-radius: 20px;
     /* background-color: #e8e8e8; */

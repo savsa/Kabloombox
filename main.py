@@ -44,6 +44,9 @@ redirect_uri = "http://localhost:8080"
 # redirect_uri = "https://kabloombox-219016.appspot.com/search"
 scope = "user-library-read user-read-private user-read-email playlist-read-private"
 
+access_token_global = ""
+refresh_token_global = ""
+
 env = jinja2.Environment(
     loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
     extensions=['jinja2.ext.autoescape'],
@@ -247,8 +250,35 @@ def get_users_playlists(access_token):
     playlists_json = playlists_response.json()
     return playlists_json["items"]
 
-def get_playlists_audio_analyses(access_token, language):
-    pass
+def get_playlists_audio_analyses(access_token, language, playlist_id):
+    # get playlists track ids
+    playlists_tracks_link = "http://api.spotify.com/v1/playlists/{}/tracks".format(playlist_id)
+    headers = { "Authorization" : "Bearer " + access_token }
+    params = {
+        "fields" : "total,items(track(id))",
+        "offset" : 0,
+    }
+    tracks_response = requests.get(playlists_tracks_link, headers=headers, params=params)
+    tracks_json = tracks_response.json()
+
+    track_ids = [track["track"]["id"] for track in tracks_json["items"]]
+    track_ids_string = ",".join(track_ids)
+
+    # get audio features of each of the traks
+    tracks_features_endpoint = "https://api.spotify.com/v1/audio-features"
+    headers = { "Authorization" : "Bearer " + access_token }
+    params = { "ids" : track_ids_string }
+    features_response = requests.get(tracks_features_endpoint, headers=headers, params=params)
+    features_json = features_response.json()
+
+    # calculate the average energy of a playlist
+    total_energy = 0
+    tracks_energy_amounts = [feature["energy"] for feature in features_json["audio_features"]]
+    for energy_amount in tracks_energy_amounts:
+        total_energy += energy_amount
+    avg_energy = total_energy / len(tracks_energy_amounts)
+    print("AVERAGE ENERGY: ", avg_energy)
+
 
 def get_users_account_id(access_token):
     user_account_endpoint = "https://api.spotify.com/v1/me"
@@ -287,7 +317,6 @@ class Search(webapp2.RequestHandler):
                 "code" : code,
                 "redirect_uri" : redirect_uri,
             }
-
             headers = { "Authorization" : "Basic " + base64.b64encode(CLIENT_ID_SPOTIFY + ":" + CLIENT_SECRET_SPOTIFY) }
             response = requests.post(SPOTIFY_TOKEN_URL, data=payload, headers=headers)
             token = response.json()
@@ -326,11 +355,12 @@ class Login(webapp2.RequestHandler):
 class HomeAndLoginPage(webapp2.RequestHandler):
     def get(self):
         code = self.request.get("code")
+        playlist2 = self.request.get("playlist2")
         template_vars = { "code" : code }
 
         # if not logged in, html page will just show log-in page
         # if logged in, then continue to core functionality of the app
-        if code:
+        if code or access_token_global:
             print('FOUND CODE')
             payload = {
                 "grant_type" : "authorization_code",
@@ -345,49 +375,56 @@ class HomeAndLoginPage(webapp2.RequestHandler):
             if token:
                 access_token = token["access_token"]
                 refresh_token = token["refresh_token"]
-                spotify_user_id = get_users_account_id(access_token)
-                template_vars["spotify_user_id"] = spotify_user_id
+
+                global access_token_global
+                global refresh_token_global
+                access_token_global = token["access_token"]
+                refresh_token_global = token["refresh_token"]
+
+                spotify_user_id = get_users_account_id(access_token_global)
 
                 user_auth_token = AuthToken(access_token=access_token, refresh_token=refresh_token, spotify_user_id=spotify_user_id)
                 user_auth_token.put()
 
-
-                # store the refesh and access token by sending it over to javascript which
-                # will then store it in localStorage
-                # self.response.headers['Content-Type'] = "application/json"
-                # self.response.write(json.dumps({
-                #     "access_token": access_token,
-                #     "refresh_token": refresh_token
-                # }))
-
                 playlists_json = get_users_playlists(access_token)
                 template_vars["playlists_json"] = playlists_json
+                template_vars["access_token"] = access_token
 
         template = env.get_template("templates/homeAndLoginPage.html")
         self.response.write(template.render(template_vars))
 
     def post(self):
         playlist_id = self.request.get("playlist")
+        spotify_user_id = get_users_account_id(access_token_global)
+        template_vars = { "access_token" : access_token_global }
+        # user_auth_token = AuthToken.query().filter(AuthToken.spotify_user_id == spotify_user_id).get() # do we want get() at the end?
 
-        print("POST, PLAYLISTID = " + playlist_id)
-
-        # spotify_user_id = get_users_account_id
-        user_auth_token = AuthToken.query().filter(AuthToken.spotify_user_id == spotify_user_id).get() # do we want get() at the end?
-
-        if access_token or refresh_token:
-            pass
-
-
-            get_playlists_audio_analyses(access_token, language)
-
+        language = "German" # temporary hard code
+        playlist_audio_analysis_json = get_playlists_audio_analyses(access_token_global, language)
 
         template = env.get_template("templates/homeAndLoginPage.html")
-        self.response.write(template.render())
+        self.response.write(template.render(template_vars))
+
+
+# (Callback). When the playlist button is clicked on the home page, it makes a get request to this class
+# which then does all the calculations and then sends something back to the request with self.response.write()
+class StartAnalysis(webapp2.RequestHandler):
+    def get(self):
+        playlist = self.request.get("playlist")
+        spotify_user_id = get_users_account_id(access_token_global)
+        template_vars = { "access_token" : access_token_global }
+        # user_auth_token = AuthToken.query().filter(AuthToken.spotify_user_id == spotify_user_id).get() # do we want get() at the end?
+
+        language = "German" # temporary hard code
+        playlist_audio_analysis_json = get_playlists_audio_analyses(access_token_global, language, playlist)
+
+        self.response.write(playlist)
 
 
 app = webapp2.WSGIApplication([
-    # ('/', HomePage),
+    ### Frontend
     ('/', HomeAndLoginPage),
+    ('/start-analysis', StartAnalysis),
     ### Backend
     ('/add', AddSongs),
     ('/login', Login),
