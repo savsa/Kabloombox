@@ -40,12 +40,13 @@ SPOTIFY_API_BASE_URL = "https://api.spotify.com"
 SPOTIFY_URL = "open.spotify.com/user/"
 
 # redirect_uri = "http://localhost:8080/search"
-redirect_uri = "http://localhost:8080"
+redirect_uri = "http://localhost:8080/redirect"
 # redirect_uri = "https://kabloombox-219016.appspot.com/search"
 scope = "user-library-read user-read-private user-read-email playlist-read-private"
 
 access_token_global = ""
 refresh_token_global = ""
+code_global = ""
 
 env = jinja2.Environment(
     loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
@@ -94,7 +95,6 @@ def get_playlists_track_ids(language, access_token):
             "fields" : "total,items(track(id))",
             "offset" : 0,
         }
-
         tracks_response = requests.get(playlists_tracks_link, headers=headers, params=params)
         tracks_json = tracks_response.json()
 
@@ -194,7 +194,7 @@ def find_url_in_comments(playlist_ids_local, playlist_ids_datastore, subreddit, 
 # playlist ids, track ids, and audio analyses of each track
 def scan_subreddit(language, access_token):
     # reddit = praw.Reddit("bot1")
-    reddit = praw.Reddit(user_agent='thestereobot0.1', client_id=CLIENT_ID_REDDIT, client_secret=CLIENT_SECRET_REDDIT, disable_update_check=True)
+    reddit = praw.Reddit(user_agent=USER_AGENT_REDDIT, client_id=CLIENT_ID_REDDIT, client_secret=CLIENT_SECRET_REDDIT, disable_update_check=True)
     subreddit = reddit.subreddit(language)
     playlist_ids_local = []
     playlist_ids_datastore = []
@@ -250,7 +250,8 @@ def get_users_playlists(access_token):
     playlists_json = playlists_response.json()
     return playlists_json["items"]
 
-def get_playlists_audio_analyses(access_token, language, playlist_id):
+
+def get_playlists_audio_features(access_token, language, playlist_id):
     # get playlists track ids
     playlists_tracks_link = "http://api.spotify.com/v1/playlists/{}/tracks".format(playlist_id)
     headers = { "Authorization" : "Bearer " + access_token }
@@ -261,35 +262,40 @@ def get_playlists_audio_analyses(access_token, language, playlist_id):
     tracks_response = requests.get(playlists_tracks_link, headers=headers, params=params)
     tracks_json = tracks_response.json()
 
-    track_ids = [track["track"]["id"] for track in tracks_json["items"]]
+    track_ids = [track["track"]["id"] for track in tracks_json["items"] if track["track"]["id"] is not None]
     track_ids_string = ",".join(track_ids)
 
-    # get audio features of each of the traks
+    # get audio features of each of the tracks
     tracks_features_endpoint = "https://api.spotify.com/v1/audio-features"
     headers = { "Authorization" : "Bearer " + access_token }
     params = { "ids" : track_ids_string }
     features_response = requests.get(tracks_features_endpoint, headers=headers, params=params)
     features_json = features_response.json()
+    return features_json
 
     # calculate the average energy of a playlist
+    # avg_energy = calculate_average_energy(features_json)
+    # print("AVERAGE ENERGY: ", avg_energy)
+
+
+def calculate_average_energy(features_json):
     total_energy = 0
     tracks_energy_amounts = [feature["energy"] for feature in features_json["audio_features"]]
     for energy_amount in tracks_energy_amounts:
         total_energy += energy_amount
     avg_energy = total_energy / len(tracks_energy_amounts)
-    print("AVERAGE ENERGY: ", avg_energy)
+    return avg_energy
 
 
 def get_users_account_id(access_token):
     user_account_endpoint = "https://api.spotify.com/v1/me"
     headers = { "Authorization" : "Bearer " + access_token }
-
     user_account_response = requests.get(user_account_endpoint, headers=headers)
     user_account_json = user_account_response.json()
     return user_account_json["id"]
 
 
-# Pages
+# Pages for adding songs to the database
 
 class AddSongs(webapp2.RequestHandler):
     def get(self):
@@ -300,9 +306,7 @@ class AddSongs(webapp2.RequestHandler):
 class Search(webapp2.RequestHandler):
     def get(self):
         code = self.request.get("code")
-        template_vars = {
-            "code" : code,
-        }
+        template_vars = { "code" : code }
 
         template = env.get_template("templates/search.html")
         self.response.write(template.render(template_vars))
@@ -322,7 +326,6 @@ class Search(webapp2.RequestHandler):
             token = response.json()
 
             if token:
-                print(token)
                 access_token = token["access_token"]
                 refresh_token = token["refresh_token"]
 
@@ -352,19 +355,20 @@ class Login(webapp2.RequestHandler):
         self.response.write(template.render())
 
 
+# Pages for the main website
+
 class HomeAndLoginPage(webapp2.RequestHandler):
     def get(self):
-        code = self.request.get("code")
-        playlist2 = self.request.get("playlist2")
-        template_vars = { "code" : code }
+        # code = self.request.get("code")
+        global code_global
+        template_vars = { "code" : code_global }
 
         # if not logged in, html page will just show log-in page
         # if logged in, then continue to core functionality of the app
-        if code or access_token_global:
-            print('FOUND CODE')
+        if code_global or access_token_global:
             payload = {
                 "grant_type" : "authorization_code",
-                "code" : code,
+                "code" : code_global,
                 "redirect_uri" : redirect_uri,
             }
 
@@ -372,7 +376,8 @@ class HomeAndLoginPage(webapp2.RequestHandler):
             response = requests.post(SPOTIFY_TOKEN_URL, data=payload, headers=headers)
             token = response.json()
 
-            if token:
+            # if token:
+            try:
                 access_token = token["access_token"]
                 refresh_token = token["refresh_token"]
 
@@ -389,21 +394,29 @@ class HomeAndLoginPage(webapp2.RequestHandler):
                 playlists_json = get_users_playlists(access_token)
                 template_vars["playlists_json"] = playlists_json
                 template_vars["access_token"] = access_token
+            except KeyError:
+                # KeyError appears when reloading the page
+                # if that happens, reset everything and log the user out
+                code_global = ""
+                access_token_global = ""
+                refresh_token_global = ""
+                self.redirect("/")
 
         template = env.get_template("templates/homeAndLoginPage.html")
         self.response.write(template.render(template_vars))
 
-    def post(self):
-        playlist_id = self.request.get("playlist")
-        spotify_user_id = get_users_account_id(access_token_global)
-        template_vars = { "access_token" : access_token_global }
-        # user_auth_token = AuthToken.query().filter(AuthToken.spotify_user_id == spotify_user_id).get() # do we want get() at the end?
-
-        language = "German" # temporary hard code
-        playlist_audio_analysis_json = get_playlists_audio_analyses(access_token_global, language)
-
-        template = env.get_template("templates/homeAndLoginPage.html")
-        self.response.write(template.render(template_vars))
+    # TODO: remove this method since this code is now in StartAnalysis
+    # def post(self):
+    #     playlist_id = self.request.get("playlist")
+    #     spotify_user_id = get_users_account_id(access_token_global)
+    #     template_vars = { "access_token" : access_token_global }
+    #     # user_auth_token = AuthToken.query().filter(AuthToken.spotify_user_id == spotify_user_id).get() # do we want get() at the end?
+    #
+    #     language = "German" # temporary hard code
+    #     playlist_audio_analysis_json = get_playlists_audio_analyses(access_token_global, language)
+    #
+    #     template = env.get_template("templates/homeAndLoginPage.html")
+    #     self.response.write(template.render(template_vars))
 
 
 # (Callback). When the playlist button is clicked on the home page, it makes a get request to this class
@@ -411,22 +424,48 @@ class HomeAndLoginPage(webapp2.RequestHandler):
 class StartAnalysis(webapp2.RequestHandler):
     def get(self):
         playlist = self.request.get("playlist")
-        spotify_user_id = get_users_account_id(access_token_global)
-        template_vars = { "access_token" : access_token_global }
-        # user_auth_token = AuthToken.query().filter(AuthToken.spotify_user_id == spotify_user_id).get() # do we want get() at the end?
+        language = self.request.get("language")
+        # to make sure that the user visiting this page is logged in
+        print("Language: " + language)
+        if playlist and access_token_global:
+            spotify_user_id = get_users_account_id(access_token_global)
+            template_vars = { "access_token" : access_token_global }
+            # user_auth_token = AuthToken.query().filter(AuthToken.spotify_user_id == spotify_user_id).get() # do we want get() at the end?
 
-        language = "German" # temporary hard code
-        playlist_audio_analysis_json = get_playlists_audio_analyses(access_token_global, language, playlist)
+            audio_features_json = get_playlists_audio_features(access_token_global, language, playlist)
+            avg_energy = round(calculate_average_energy(audio_features_json), 3)
+            print("Rounded energy: ", avg_energy)
 
-        self.response.write(playlist)
+            matches = Track.query().filter(Track.energy >= (avg_energy - .1)).filter(Track.energy <= (avg_energy + .1))
+
+            match_ids = [match.track_id for match in matches]
+
+            self.response.write(match_ids)
+
+class Redirect(webapp2.RequestHandler):
+    def get(self):
+        global code_global
+        code_global = self.request.get("code")
+        self.redirect("/")
+
+        template = env.get_template("templates/success.html")
+        self.response.write(template.render())
+
+
+class Login2(webapp2.RequestHandler):
+    def get(self):
+        template = env.get_template("templates/loginPage2.html")
+        self.response.write(template.render())
 
 
 app = webapp2.WSGIApplication([
     ### Frontend
+    # ('/', Login2),
     ('/', HomeAndLoginPage),
     ('/start-analysis', StartAnalysis),
     ### Backend
     ('/add', AddSongs),
     ('/login', Login),
     ('/search', Search),
+    ('/redirect', Redirect),
 ], debug=True)

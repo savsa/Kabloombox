@@ -14,13 +14,31 @@
 </head>
 <body>
 
-    {% if code or access_token %}
 
-        <!-- <form action="/" method="get"> -->
-            {% for playlist in playlists_json %}
-                <button name="playlist" value="{{ playlist['id'] }}" class="playlist-button">{{ playlist['name'] }}</button>
-            {% endfor %}
-        <!-- </form> -->
+    {% if code or access_token %}
+    <ul>
+        {% for playlist in playlists_json %}
+            <li><button name="playlist" value="{{ playlist['id'] }}" class="playlist-button">{{ playlist['name'] }}</button></li>
+        {% endfor %}
+    </ul>
+
+        {% if playlists_json %}
+            <select class="language" name="language">
+              <option value="German">German</option>
+              <option value="french">French</option>
+              <option value="learnspanish">Spanish</option>
+              <option value="italianlearning">Italian</option>
+              <option value="learnpolish">Polish</option>
+              <option value="portuguese">Portuguese</option>
+              <option value="russian">Russian</option>
+              <option value="Cantonese">Cantonese</option>
+              <option value="chineselanguage">Chinese</option>
+              <option value="LearnFinnish">Finnish</option>
+              <option value="LearnJapanese">Japanese</option>
+            </select>
+
+            <ul class="matches"></ul>
+        {% endif %}
 
     {% else %}
 
@@ -34,7 +52,7 @@
             <div class="middle-block">
 
                 <div class="logo">
-                    <img src="../images/KabloomboxLogo.png" draggable="false">
+                    <img src="../images/KabloomboxLogo.png" draggable="false" id="logo">
                 </div>
 
                 <div class="description">
