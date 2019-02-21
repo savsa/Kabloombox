@@ -6,7 +6,7 @@
     <!-- <meta name="viewport" content="width=1000"> -->
     <!-- <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" / -->
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,500,600,700" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,500,600" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600" rel="stylesheet">
     <link href="../css/homeAndLoginPage.css" rel="stylesheet">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
@@ -14,56 +14,50 @@
     <title>loginPage</title>
 </head>
 <body>
-
-
     {% if code or access_token %}
 
+
         {% if playlists_json %}
-            <select class="language" name="language">
-              <option value="German">German</option>
-              <option value="french">French</option>
-              <option value="learnspanish">Spanish</option>
-              <option value="italianlearning">Italian</option>
-              <option value="learnpolish">Polish</option>
-              <option value="portuguese">Portuguese</option>
-              <option value="russian">Russian</option>
-              <option value="Cantonese">Cantonese</option>
-              <option value="chineselanguage">Chinese</option>
-              <option value="LearnFinnish">Finnish</option>
-              <option value="LearnJapanese">Japanese</option>
-            </select>
-
-            <ul class="matches"></ul>
+            <div class="select-style">
+                <select class="language" name="language">
+                    <option value="german">German</option>
+                    <option value="french">French</option>
+                    <option value="spanish">Spanish</option>
+                    <option value="italian">Italian</option>
+                    <option value="polish">Polish</option>
+                    <option value="portuguese">Portuguese</option>
+                    <option value="russian">Russian</option>
+                    <option value="cantonese">Cantonese</option>
+                    <option value="chinese">Chinese</option>
+                    <option value="finish">Finnish</option>
+                    <option value="japanese">Japanese</option>
+                </select>
+            </div>
         {% endif %}
-        
-    <div class="container">
-        <div class="playlist-grid">
-            {% for playlist in playlists_json %}
-
-                <div class="playlist-item">
-                    <div class="playlist-cover">
-                        <button name="playlist" value="{{ playlist['id'] }}" class="playlist-button">
-                            {% if playlist['images'][0] %}
-                            <img src="{{ playlist['images'][0]['url']}}" class="image">
-                            {% endif %}
-                        </button>
+        <h2>Your playlists:</h2>
+        <ul class="matches"></ul>
+        <div class="container">
+            <div class="playlist-grid">
+                {% for playlist in playlists_json %}
+                    <div class="playlist-item">
+                        <div class="playlist-cover">
+                            <button name="playlist" value="{{ playlist['id'] }}" class="playlist-button">
+                                {% if playlist['images'][0] %}
+                                    <img src="{{ playlist['images'][0]['url']}}" class="image">
+                                {% endif %}
+                            </button>
+                        </div>
+                        <div class="playlist-name">
+                            <p>
+                                <span id="playlist-name">{{ playlist['name'] }}<br></span>
+                                <span id="playlist-owner">{{ playlist['owner']['id'] }}</span>
+                            </p>
+                        </div>
                     </div>
-                    <div class="playlist-name">
-                        <p>
-                            <span>{{ playlist['name'] }}<br></span>
-                            <span id="playlist-owner">{{ playlist['owner']['id'] }}</span>
-                        </p>
-                    </div>
-                </div>
-
-            {% endfor %}
+                {% endfor %}
+            </div>
         </div>
-    </div>
-
-
-
     {% else %}
-
         <div class="background">
             <div class="upper-block"></div>
             <!-- <div class="credit">Made with <span style="color: #473EBD;">💜</span> by Savion</div> -->
@@ -90,9 +84,7 @@
                 </div>
             </div>
         </div>
-
     {% endif %}
-
 </body>
 <script src="../javascript/homeAndLoginPage.js"></script>
 </html>

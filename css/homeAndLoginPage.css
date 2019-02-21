@@ -223,8 +223,12 @@ button:hover {
     font-weight: 400;
 }
 
-#playlist-owner {
+#playlist-name {
     color: #473EBD;
+}
+
+#playlist-owner {
+    color: gray;
 }
 
 @media (max-width:1350px){
@@ -238,3 +242,42 @@ button:hover {
         grid-template-columns: 1fr 1fr;
     }
 }
+
+@media (max-width:700px){
+    .playlist-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.language {
+    height: 40px;
+    width: 150px;
+    font-size: 20px;
+    font-family: 'Open Sans', sans-serif;
+}
+
+h2 {
+    font-family: 'Open Sans', sans-serif;
+}
+
+/* .select-style {
+    border: 1px solid #ccc;
+    width: 120px;
+    border-radius: 3px;
+    overflow: hidden;
+    background: #fafafa url("../images/dropdown.png") no-repeat 90% 50%;
+}
+
+.select-style select {
+    padding: 5px 8px;
+    width: 130%;
+    border: none;
+    box-shadow: none;
+    background: transparent;
+    background-image: none;
+    -webkit-appearance: none;
+}
+
+.select-style select:focus {
+    outline: none;
+} */

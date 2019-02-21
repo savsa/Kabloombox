@@ -397,7 +397,7 @@ class HomeAndLoginPage(webapp2.RequestHandler):
 # (Callback). When the playlist button is clicked on the home page, it makes a get request to this class
 # which then does all the calculations and then sends something back to the request with self.response.write()
 class StartAnalysis(webapp2.RequestHandler):
-    def get(self):
+    def post(self):
         playlist = self.request.get("playlist")
         language = self.request.get("language")
         # to make sure that the user visiting this page is logged in
@@ -410,7 +410,6 @@ class StartAnalysis(webapp2.RequestHandler):
             matches = Track.query().filter(Track.energy >= (avg_energy - .1), Track.energy <= (avg_energy + .1))
             match_ids = [match.track_id for match in matches]
             self.response.write(match_ids)
-        self.redirect("/")
 
 
 class Redirect(webapp2.RequestHandler):
