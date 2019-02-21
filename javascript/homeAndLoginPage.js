@@ -7,6 +7,7 @@ $(document).ready(function() {
             success: function(results) {
                 results = results.substring(1)
                 results = results.split(" ");
+                console.log(results);
                 var uniqueResults = [];
                 $.each(results, function(i, el){
                     if($.inArray(el, uniqueResults) === -1) uniqueResults.push(el);

@@ -18,12 +18,6 @@ requests_toolbelt.adapters.appengine.monkeypatch()
 
 # TODO:
 # - work with spotify link in main post and on wiki, not just in comments
-# X make sure no repeats in songs
-# X works if multiple links in comment
-# X make sure works if invalid spotify link
-# X make sure works with replies to comments
-# X works with shortened text url (video *here*)
-# X make sure works if self uploaded spotify song
 
 # Client Keys
 CLIENT_ID_SPOTIFY = config.CLIENT_ID_SPOTIFY
@@ -193,7 +187,6 @@ def find_url_in_comments(playlist_ids_local, playlist_ids_datastore, subreddit, 
 # Scrapes specified subreddit for all Spotify links, and use that data to get
 # playlist ids, track ids, and audio analyses of each track
 def scan_subreddit(language, access_token):
-    # reddit = praw.Reddit("bot1")
     reddit = praw.Reddit(user_agent=USER_AGENT_REDDIT, client_id=CLIENT_ID_REDDIT, client_secret=CLIENT_SECRET_REDDIT, disable_update_check=True)
     subreddit = reddit.subreddit(language)
     playlist_ids_local = []
@@ -232,7 +225,6 @@ def scan_subreddit(language, access_token):
 
     # find spotify playlist url in comments of all submissions
     deferred.defer(find_url_in_comments, playlist_ids_local, playlist_ids_datastore, subreddit, language)
-
     # get a playlist's tracks
     deferred.defer(get_playlists_track_ids, language, access_token)
     # get analysis of each track using the tracks' ids
@@ -245,7 +237,6 @@ def get_users_playlists(access_token):
     playlists_endpoint = "https://api.spotify.com/v1/me/playlists"
     headers = { "Authorization" : "Bearer " + access_token }
     params = { "offset" : 0 }
-
     playlists_response = requests.get(playlists_endpoint, headers=headers, params=params)
     playlists_json = playlists_response.json()
     return playlists_json["items"]
@@ -273,12 +264,9 @@ def get_playlists_audio_features(access_token, language, playlist_id):
     features_json = features_response.json()
     return features_json
 
-    # calculate the average energy of a playlist
-    # avg_energy = calculate_average_energy(features_json)
-    # print("AVERAGE ENERGY: ", avg_energy)
-
 
 def calculate_average_energy(features_json):
+    if len(features_json) == 0: return -1
     total_energy = 0
     tracks_energy_amounts = [feature["energy"] for feature in features_json["audio_features"]]
     for energy_amount in tracks_energy_amounts:
@@ -388,8 +376,8 @@ class HomeAndLoginPage(webapp2.RequestHandler):
 
                 spotify_user_id = get_users_account_id(access_token_global)
 
-                user_auth_token = AuthToken(access_token=access_token, refresh_token=refresh_token, spotify_user_id=spotify_user_id)
-                user_auth_token.put()
+                # user_auth_token = AuthToken(access_token=access_token, refresh_token=refresh_token, spotify_user_id=spotify_user_id)
+                # user_auth_token.put()
 
                 playlists_json = get_users_playlists(access_token)
                 template_vars["playlists_json"] = playlists_json
@@ -405,19 +393,6 @@ class HomeAndLoginPage(webapp2.RequestHandler):
         template = env.get_template("templates/homeAndLoginPage.html")
         self.response.write(template.render(template_vars))
 
-    # TODO: remove this method since this code is now in StartAnalysis
-    # def post(self):
-    #     playlist_id = self.request.get("playlist")
-    #     spotify_user_id = get_users_account_id(access_token_global)
-    #     template_vars = { "access_token" : access_token_global }
-    #     # user_auth_token = AuthToken.query().filter(AuthToken.spotify_user_id == spotify_user_id).get() # do we want get() at the end?
-    #
-    #     language = "German" # temporary hard code
-    #     playlist_audio_analysis_json = get_playlists_audio_analyses(access_token_global, language)
-    #
-    #     template = env.get_template("templates/homeAndLoginPage.html")
-    #     self.response.write(template.render(template_vars))
-
 
 # (Callback). When the playlist button is clicked on the home page, it makes a get request to this class
 # which then does all the calculations and then sends something back to the request with self.response.write()
@@ -426,21 +401,17 @@ class StartAnalysis(webapp2.RequestHandler):
         playlist = self.request.get("playlist")
         language = self.request.get("language")
         # to make sure that the user visiting this page is logged in
-        print("Language: " + language)
         if playlist and access_token_global:
             spotify_user_id = get_users_account_id(access_token_global)
             template_vars = { "access_token" : access_token_global }
-            # user_auth_token = AuthToken.query().filter(AuthToken.spotify_user_id == spotify_user_id).get() # do we want get() at the end?
 
             audio_features_json = get_playlists_audio_features(access_token_global, language, playlist)
             avg_energy = round(calculate_average_energy(audio_features_json), 3)
-            print("Rounded energy: ", avg_energy)
-
-            matches = Track.query().filter(Track.energy >= (avg_energy - .1)).filter(Track.energy <= (avg_energy + .1))
-
+            matches = Track.query().filter(Track.energy >= (avg_energy - .1), Track.energy <= (avg_energy + .1))
             match_ids = [match.track_id for match in matches]
-
             self.response.write(match_ids)
+        self.redirect("/")
+
 
 class Redirect(webapp2.RequestHandler):
     def get(self):

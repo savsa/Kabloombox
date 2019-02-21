@@ -7,6 +7,7 @@
     <!-- <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" / -->
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,500,600,700" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600" rel="stylesheet">
     <link href="../css/homeAndLoginPage.css" rel="stylesheet">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 
@@ -16,11 +17,6 @@
 
 
     {% if code or access_token %}
-    <ul>
-        {% for playlist in playlists_json %}
-            <li><button name="playlist" value="{{ playlist['id'] }}" class="playlist-button">{{ playlist['name'] }}</button></li>
-        {% endfor %}
-    </ul>
 
         {% if playlists_json %}
             <select class="language" name="language">
@@ -39,6 +35,32 @@
 
             <ul class="matches"></ul>
         {% endif %}
+        
+    <div class="container">
+        <div class="playlist-grid">
+            {% for playlist in playlists_json %}
+
+                <div class="playlist-item">
+                    <div class="playlist-cover">
+                        <button name="playlist" value="{{ playlist['id'] }}" class="playlist-button">
+                            {% if playlist['images'][0] %}
+                            <img src="{{ playlist['images'][0]['url']}}" class="image">
+                            {% endif %}
+                        </button>
+                    </div>
+                    <div class="playlist-name">
+                        <p>
+                            <span>{{ playlist['name'] }}<br></span>
+                            <span id="playlist-owner">{{ playlist['owner']['id'] }}</span>
+                        </p>
+                    </div>
+                </div>
+
+            {% endfor %}
+        </div>
+    </div>
+
+
 
     {% else %}
 
