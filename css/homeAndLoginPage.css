@@ -1,11 +1,14 @@
 html, body {
     margin: 0;
     padding: 0;
+    top: 0;
+    margin-top: 0;
     height: 100%;
     width: 100%;
     /* overflow: hidden; */
-    font-family: 'Monsterrat', sans-serif;
+    font-family: 'Open Sans', sans-serif;
 }
+
 
 body {
     background-color: white;
@@ -105,18 +108,11 @@ img {
     position: relative;
     height: 100%;
     width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
 
 }
 
-
-.logo {
-    align-self: auto;
-    margin-top: 12%;
-    margin-bottom: 40px;
-}
 
 
 .description {
@@ -130,16 +126,19 @@ img {
 
 .loginButton {
     align-self: auto;
-    text-align: center;
+    /* text-align: center; */
     text-decoration: none;
     font-size: 20px;
     padding: 20px 60px;
     font-weight: 600;
-    border-radius: 30px;
+    border-radius: 50px;
     margin: 0 auto;
     color: white;
+    width: 10em;
 
     background-color: #4457bf;
+    background-image: linear-gradient(to top right, #722BD3, #FF9065);
+    background-image: linear-gradient(to bottom left, #FF9065, #722BD3);
 }
 
 #login {
@@ -156,7 +155,7 @@ img {
     display: flex;
     flex-direction: row;
     justify-content: center;
-    padding 10px;
+    padding: 10px;
 }
 
 .about {
@@ -176,6 +175,12 @@ img {
     color: gray;
 }
 
+.left-side {
+    display: grid;
+    grid-template-rows: 1fr 1fr 1fr;
+    /* grid-template-columns: 1fr 1fr 1fr; */
+}
+
 
 
 .container {
@@ -188,29 +193,32 @@ img {
     grid-template-columns: 1fr 1fr 1fr 1fr;
     /* grid-gap: 15px; */
     grid-column-gap: 30px;
-    grid-auto-rows: 400px;
-    grid-auto-columns: 150px;
-    justify-item: center;
+    /* grid-auto-rows: 400px; */
+    /* grid-auto-columns: 150px; */
+    /* justify-item: center; */
 }
 
 .playlist-item {
     display: grid;
     grid-template-rows: 3fr 1fr;
+    justify-content: center;
 }
 
 
 .playlist-button {
-    height: 280px;
-    width: 280px;
-    background-color: rgba(255, 255, 255, 0);
+    height: 260px;
+    width: 260px;
+    background-color: rgba(255, 255, 255, 1);
     box-shadow: 0px 3px 10px rgba(0, 0, 0, 0.2);
     border: 0;
     border-radius: 5px;
+    align-self: center;
 }
 
 .image {
     height: 180px;
     width: 180px;
+    align-self: center;
 }
 
 
@@ -260,6 +268,21 @@ h2 {
     font-family: 'Open Sans', sans-serif;
 }
 
+h1 {
+    font-size: 80px;
+    text-align: center;
+    color: #4457bf;
+    margin: 0;
+}
+
+h3 {
+    font-size: 60px;
+    text-align: center;
+    color: #4457bf;
+    margin: 0;
+}
+
+
 /* .select-style {
     border: 1px solid #ccc;
     width: 120px;
@@ -281,3 +304,56 @@ h2 {
 .select-style select:focus {
     outline: none;
 } */
+
+
+
+
+/*  HEADER */
+header {
+    background-color: white;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    z-index: 999;
+    width: 100%;
+    box-shadow: 0px 3px 10px rgba(0, 0, 0, 0.2);
+}
+
+nav {
+    display: grid;
+    grid-template-columns: 6fr 1fr 1fr 1fr;
+    grid-gap: 2em;
+    right: 5em;
+    place-self: center;
+    grid-column: 3/4;
+    /* justify-self:end; */
+}
+
+.navbar-profile-photo {
+    grid-column: 2 / 3;
+}
+
+.navbar-username {
+    grid-column: 3 / 4;
+}
+
+.navbar-account {
+    place-self: center;
+    justify-self: center;
+}
+
+.navbar-logo {
+    grid-column: 1 / 2;
+}
+
+#photo {
+    height: 3em;
+    width: 3em;
+    border-radius: 100%;
+}
+
+
+
+nav a {
+    text-decoration: none;
+    color: #473EBD;
+}
