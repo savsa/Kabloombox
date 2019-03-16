@@ -80,7 +80,6 @@ class AuthToken(ndb.Model):
 
 def get_playlists_track_ids(language, access_token):
     """Using the playlist ids, get all of their tracks and track ids."""
-
     track_ids = []
     playlist_ids = PlaylistID.query().filter(PlaylistID.language == language)
     for playlist_id in playlist_ids:
@@ -122,7 +121,6 @@ def create_tracks_from_audio_analysis(language, access_token):
     """Retrieves the track_ids from Datastore, uses thoses to get the audio
     analyses of the tracks, then stores that in Datastore.
     """
-
     tracks = []
     track_ids = TrackID.query().filter(TrackID.language == language)
 
@@ -204,7 +202,10 @@ def scan_subreddit(language, access_token):
         'finnish': 'LearnFinnish',
         'japanese': 'LearnJapanese',
     }
-    reddit = praw.Reddit(user_agent=USER_AGENT_REDDIT, client_id=CLIENT_ID_REDDIT, client_secret=CLIENT_SECRET_REDDIT, disable_update_check=True)
+    reddit = praw.Reddit(user_agent=USER_AGENT_REDDIT,
+                         client_id=CLIENT_ID_REDDIT,
+                         client_secret=CLIENT_SECRET_REDDIT,
+                         disable_update_check=True)
     subreddit = reddit.subreddit(subreddits[language])
     playlist_ids_local = []
     playlist_ids_datastore = []
@@ -482,11 +483,51 @@ class StartAnalysis(webapp2.RequestHandler):
             template_vars = { 'access_token' : access_token_global }
 
             audio_features_json = get_playlists_audio_features(access_token_global, language, playlist)
+
             avg_energy = round(calculate_average_energy(audio_features_json), 3)
-            print(avg_energy)
-            matches = Track.query().filter(Track.energy >= (avg_energy - .1), Track.energy <= (avg_energy + .1))
+            avg_tempo = round(calculate_average_tempo(audio_features_json), 3)
+            avg_danceability = round(calculate_average_danceability(audio_features_json), 3)
+            avg_energy = round(calculate_average_acousticness(audio_features_json), 3)
+            avg_instrumentalness = round(calculate_average_instrumentalness(audio_features_json), 3)
+            avg_liveness = round(calculate_average_liveness(audio_features_json), 3)
+
+            matches = []
+
+            # first, run the 'energy' filter
+            first_matches = Track.query().filter(Track.energy >= (avg_energy - .1),
+                                                 Track.energy <= (avg_energy + .1))
+            first_matches_len = len(matches)
+            print(first_matches_len)
+
+            # if there are too many matches, run the 'danceability' filter
+            second_matches = 0
+            if len(matches) > 20:
+                second_matches = matches.filter(Track.danceability >= (avg_danceability - .1),
+                                                Track.danceability <= (avg_danceability + .1))
+            second_matches_len = len(matches)
+            print(len(second_matches_len))
+            if 20 - first_matches_len < 20 - second_matches_len:
+                matches = first_matches
+            else:
+                matches = second_matches
+
+
+            # matches = matches.filter(Track.instrumentalness >= (avg_instrumentalness - .1),
+            #                          Track.instrumentalness <= (avg_instrumentalness + .1))
+
+
             match_ids = [match.track_id for match in matches]
             self.response.write(match_ids)
+
+    # loudness = ndb.FloatProperty()
+    # tempo = ndb.FloatProperty()
+    # danceability = ndb.FloatProperty()
+    # energy = ndb.FloatProperty()
+    # acousticness = ndb.FloatProperty()
+    # instrumentalness = ndb.FloatProperty()
+    # liveness = ndb.FloatProperty()
+    # valence = ndb.FloatProperty()
+    # mode = ndb.IntegerProperty()
 
 
 class Redirect(webapp2.RequestHandler):
@@ -505,11 +546,16 @@ class Login2(webapp2.RequestHandler):
         template = env.get_template('templates/loginPage2.html')
         self.response.write(template.render())
 
+class Playlist(webapp2.RequestHandler):
+    def get(self):
+        template = env.get_template('templates/playlist.html')
+        self.response.write(template.render())
+
 
 app = webapp2.WSGIApplication([
     ### Frontend
-    # ('/', Login2),
-    ('/', HomeAndLoginPage),
+    ('/', Playlist),
+    # ('/', HomeAndLoginPage),
     ('/start-analysis', StartAnalysis),
     ### Backend
     ('/add', AddSongs),
