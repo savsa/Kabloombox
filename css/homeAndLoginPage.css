@@ -7,6 +7,7 @@ html, body {
     width: 100%;
     /* overflow: hidden; */
     font-family: 'Open Sans', sans-serif;
+    color: #2a2a31;
 }
 
 
@@ -14,7 +15,7 @@ body {
     background-color: white;
 }
 
-a.loginButton {
+a.login-button {
     /* color: white; */
     /* text-decoration: none;
 
@@ -106,46 +107,89 @@ img {
 /* #4457bf */
 .content {
     position: relative;
-    height: 100%;
     width: 100%;
     display: grid;
     grid-template-columns: 1fr 1fr;
-
+    margin-top: 50px;
 }
 
+.left-side {
+    display: grid;
+    grid-template-rows: 1fr 1fr ;
+    /* grid-template-columns: 1fr 1fr 1fr; */
+}
 
+.right-side {
+    position: relative;
+}
+
+h1 {
+    font-size: 50px;
+}
+
+p {
+    color: #696c77;
+}
 
 .description {
-    align-self: auto;
-    margin-bottom: 120px;
+    /* margin-bottom: 120px;*/
+    padding: 70px;
+    /* margin-left: 40px; */
     font-size: 22px;
     font-weight: 600;
-
-    color: #4457bf;
+    /* color: #4457bf; */
+    align-self: center;
 }
 
-.loginButton {
-    align-self: auto;
+.login-button {
+    /* align-self: auto; */
     /* text-align: center; */
     text-decoration: none;
     font-size: 20px;
     padding: 20px 60px;
     font-weight: 600;
     border-radius: 50px;
-    margin: 0 auto;
+    margin-left: 70px;
+    /* margin: 0 auto; */
+    text-align: center;
     color: white;
     width: 10em;
+    justify-self: start;
 
-    background-color: #4457bf;
-    background-image: linear-gradient(to top right, #722BD3, #FF9065);
     background-image: linear-gradient(to bottom left, #FF9065, #722BD3);
 }
+
+#artwork {
+    height: 700px;
+    width: auto;
+}
+
+#boombox {
+    position: absolute;
+    top: 220px;
+    right: 110px;
+    height: 250px;
+    width: 250px;
+    animation: boombox 2s alternate ease-in-out infinite;
+}
+
+@keyframes boombox {
+    0% {
+        transform: translateY(8px);
+    }
+    100% {
+        transform: translateY(-8px);
+    }
+}
+
+
+
 
 #login {
     text-decoration: none;
 }
 
-.loginButton:hover {
+.login-button:hover {
     cursor: pointer;
     box-shadow: 0px 10px 20px rgba(0, 0, 0, 0.3);
 }
@@ -175,11 +219,10 @@ img {
     color: gray;
 }
 
-.left-side {
-    display: grid;
-    grid-template-rows: 1fr 1fr 1fr;
-    /* grid-template-columns: 1fr 1fr 1fr; */
+.content {
+    /* margin-top: 50px; */
 }
+
 
 
 
@@ -268,19 +311,7 @@ h2 {
     font-family: 'Open Sans', sans-serif;
 }
 
-h1 {
-    font-size: 80px;
-    text-align: center;
-    color: #4457bf;
-    margin: 0;
-}
 
-h3 {
-    font-size: 60px;
-    text-align: center;
-    color: #4457bf;
-    margin: 0;
-}
 
 
 /* .select-style {
@@ -308,15 +339,24 @@ h3 {
 
 
 
-/*  HEADER */
+/*  NAVBAR */
 header {
     background-color: white;
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
     z-index: 999;
     width: 100%;
-    box-shadow: 0px 3px 10px rgba(0, 0, 0, 0.2);
+    /* box-shadow: 0px 3px 10px rgba(0, 0, 0, 0.2); */
+    border-bottom: 1px solid #D6D9E7;
 }
+
+header a {
+    height: 30px;
+    width: 188.67px;
+    margin: 28px 25px;
+}
+
+
 
 nav {
     display: grid;
@@ -341,19 +381,23 @@ nav {
     justify-self: center;
 }
 
-.navbar-logo {
-    grid-column: 1 / 2;
+#navbar-logo {
+    /* grid-column: 1 / 2; */
+    justify-self: start;
+    /* margin-left: 4%; */
+    height: 100%;
+    width: 100%;
+    opacity: 1;
+    transition: .3s;
+}
+
+#navbar-logo:hover {
+    opacity: 0.6;
+    transition: .3s;
 }
 
 #photo {
     height: 3em;
     width: 3em;
     border-radius: 100%;
-}
-
-
-
-nav a {
-    text-decoration: none;
-    color: #473EBD;
 }

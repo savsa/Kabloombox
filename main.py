@@ -554,8 +554,8 @@ class Playlist(webapp2.RequestHandler):
 
 app = webapp2.WSGIApplication([
     ### Frontend
-    ('/', Playlist),
-    # ('/', HomeAndLoginPage),
+    # ('/', Playlist),
+    ('/', HomeAndLoginPage),
     ('/start-analysis', StartAnalysis),
     ### Backend
     ('/add', AddSongs),

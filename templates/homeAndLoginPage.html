@@ -12,12 +12,12 @@
     <link href="../css/homeAndLoginPage.css" rel="stylesheet">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 
-    <title>awef</title>
+    <title>Kabloombox</title>
 </head>
 <body>
 
     <header>
-        <h3 class="navbar-logo">Kabloombox</h1>
+        <a href="#"><img src="../images/KabloomboxLogo.png" id="navbar-logo" /></a>
         <nav>
             <div class="navbar-profile-photo navbar-account">
                 <a href="#"><img src="../images/small.jpg" id="photo"></a>
@@ -77,19 +77,23 @@
     {% else %}
 
         <div class="content">
-
             <div class="left-side">
                 <div class="description">
-                    <p>Kabloombox translates your music taste into a foreign language</p>
-                    <p>to help you find your new favorite songs and artists</p>
+                    <h1>Find your new favorite songs and artists</h1>
+                    <p>Kabloombox translates your music taste into a foreign language
+                        to help you find your new favorite songs and artists.</p>
                 </div>
 
-                <a href="/login" id="login"><div class="loginButton">Log in with Spotify</div></a>
+                <div class="login-section">
+                    <a href="/login" id="login">
+                        <div class="login-button">Log in with Spotify</div>
+                    </a>
+                </div>
             </div>
 
             <div class="right-side">
-
-
+                <img src="../images/background.png" id="artwork" draggable="false" />
+                <img src="../images/boombox.png" id="boombox" draggable="false" />
             </div>
 
 
