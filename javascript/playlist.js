@@ -49,19 +49,3 @@ $(document).ready(function() {
 function forceTwoDigits(n) {
   return ('0' + n).slice(-2);
 }
-
-
-
-
-// $(document).ready(function() {
-//     results =[123, 234554, 23482352, 234234, 4, 3, 12, 123, 64, 23, 3]
-//     results.forEach(function(result) {
-//         // result = result.substring(2, 24);
-//         $('.result-playlist-body').append(' \
-//             <div class="result-playlist-track"> \
-//                 <span id="result-track-title">Title</span> \
-//                 <span id="result-track-artist">Artist</span> \
-//                 <span id="result-track-length">3:24</span> \
-//             </div>');
-//     });
-// })

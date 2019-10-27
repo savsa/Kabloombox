@@ -9,9 +9,11 @@ import logging
 
 import praw
 import config
+# from session import Session
 
 from google.appengine.ext import deferred
 from google.appengine.ext import ndb
+from webapp2_extras import sessions
 
 import requests_toolbelt.adapters.appengine
 
@@ -34,8 +36,6 @@ redirect_uri = 'http://localhost:8080/redirect'
 
 scope = 'user-library-read user-read-private user-read-email playlist-read-private'
 
-access_token_global = ''
-refresh_token_global = ''
 code_global = ''
 
 subreddits = {
@@ -84,6 +84,11 @@ class AuthToken(ndb.Model):
     access_token = ndb.StringProperty()
     refresh_token = ndb.StringProperty()
     spotify_user_id = ndb.StringProperty()
+
+class Token:
+    def __init__(self, access_token, refresh_token):
+        self.access_token = access_token
+        self.refresh_token = refresh_token
 
 
 # Functions
@@ -164,16 +169,6 @@ def create_tracks_from_audio_analysis(language, access_token):
     # put any remaining tracks
     if len(tracks) > 0:
         ndb.put_multi(tracks)
-
-def get_songs_stats(access_token):
-    spotify_song_stats_link = 'https://api.spotify.com/v1/tracks/{}'.format(id)
-    headers = { 'Authorization' : 'Bearer ' + access_token }
-    stats_response = requests.get(spotify_song_stats_link, headers=headers)
-    stats = stats_response.json()
-
-    duration = stats["track"]["duration"]
-    duration = stats["track"]["duration"]
-    duration = stats["track"]["duration"]
 
 def find_url_in_comments(playlist_ids_local, playlist_ids_datastore, subreddit, language):
     """Finds links to Spotify playlists in the comment section of posts."""
@@ -312,7 +307,52 @@ def calculate_average(features_json, feature_type):
     avg_amount = float(total_amount) / len(features_json['audio_features'])
     return avg_amount
 
+def get_token(code):
+    payload = {
+        'grant_type' : 'authorization_code',
+        'code' : code,
+        'redirect_uri' : redirect_uri,
+    }
+    headers = { 'Authorization' : 'Basic ' + base64.b64encode(CLIENT_ID_SPOTIFY + ':' + CLIENT_SECRET_SPOTIFY) }
+    response = requests.post(SPOTIFY_TOKEN_URL, data=payload, headers=headers)
+    token_json = response.json()
+    try:
+        token = Token(token_json['access_token'], token_json['refresh_token'])
+        return token
+    except KeyError:
+        return None
+
+def get_access_from_refresh_token(refresh_token):
+    payload = {
+        'grant_type' : 'refresh_token',
+        'refresh_token' : refresh_token
+    }
+    headers = { 'Authorization' : 'Basic ' + base64.b64encode(CLIENT_ID_SPOTIFY + ':' + CLIENT_SECRET_SPOTIFY) }
+    response = requests.post(SPOTIFY_TOKEN_URL, data=payload, headers=headers)
+    response_json = response.json()
+    try:
+        access_token = response_json['access_token']
+        return access_token
+    except KeyError:
+        return None
+
 # Pages for adding songs to the database
+
+class BaseHandler(webapp2.RequestHandler):
+    def dispatch(self):
+        # Get a session store for this request.
+        # Dispatch the request.
+        # Save all sessions.
+        self.session_store = sessions.get_store(request=self.request)
+        try:
+            webapp2.RequestHandler.dispatch(self)
+        finally:
+            self.session_store.save_sessions(self.response)
+
+    @webapp2.cached_property
+    def session(self):
+        # Returns a session using the default cookie key.
+        return self.session_store.get_session()
 
 class AddSongs(webapp2.RequestHandler):
     def get(self):
@@ -352,84 +392,60 @@ class Scrape(webapp2.RequestHandler):
         language = self.request.get('language')
 
         if code_global:
-            payload = {
-                'grant_type' : 'authorization_code',
-                'code' : code_global,
-                'redirect_uri' : redirect_uri,
-            }
-            headers = { 'Authorization' : 'Basic ' + base64.b64encode(CLIENT_ID_SPOTIFY + ':' + CLIENT_SECRET_SPOTIFY) }
-            response = requests.post(SPOTIFY_TOKEN_URL, data=payload, headers=headers)
-            token = response.json()
-
+            token = get_token(code_global)
             if token:
-                access_token = token['access_token']
-                refresh_token = token['refresh_token']
-
-                scan_subreddit(language, access_token)
+                self.session['access_token'] = token.access_token
+                self.session['refresh_token'] = token.refresh_token
+                scan_subreddit(language, token.access_token)
 
         template = env.get_template('templates/search.html')
         self.response.write(template.render())
 
 # Pages for the main website
 
-class HomeAndLoginPage(webapp2.RequestHandler):
+class HomeAndLoginPage(BaseHandler):
     def get(self):
         global code_global
         template_vars = { 'code' : code_global }
 
-        # if not logged in, html page will just show log-in page
-        # if logged in, then continue to core functionality of the app
-        if code_global or access_token_global:
-            payload = {
-                'grant_type' : 'authorization_code',
-                'code' : code_global,
-                'redirect_uri' : redirect_uri,
-            }
+        access_token = self.session.get('access_token')
+        refresh_token = self.session.get('refresh_token')
+        if access_token:
+            spotify_user_id = get_users_account_id(access_token)
+            playlists_json = get_users_playlists(access_token)
+            template_vars['playlists_json'] = playlists_json
+            template_vars['access_token'] = access_token
+        elif code_global:
+            token = get_token(code_global)
+            if token:
+                access_token = token.access_token
+                refresh_token = token.refresh_token
+                self.session['access_token'] = access_token
+                self.session['refresh_token'] = refresh_token
 
-            headers = { 'Authorization' : 'Basic ' + base64.b64encode(CLIENT_ID_SPOTIFY + ':' + CLIENT_SECRET_SPOTIFY) }
-            response = requests.post(SPOTIFY_TOKEN_URL, data=payload, headers=headers)
-            token = response.json()
-
-            # if there's a valid token
-            try:
-                access_token = token['access_token']
-                refresh_token = token['refresh_token']
-
-                global access_token_global
-                global refresh_token_global
-                access_token_global = token['access_token']
-                refresh_token_global = token['refresh_token']
-
-                spotify_user_id = get_users_account_id(access_token_global)
-
+                spotify_user_id = get_users_account_id(access_token)
                 playlists_json = get_users_playlists(access_token)
+
                 template_vars['playlists_json'] = playlists_json
                 template_vars['access_token'] = access_token
-            except KeyError:
-                # KeyError appears when reloading the page
-                # if that happens, reset everything and log the user out
-                code_global = ''
-                access_token_global = ''
-                refresh_token_global = ''
-                self.redirect('/')
 
         template = env.get_template('templates/homeAndLoginPage.html')
         self.response.write(template.render(template_vars))
 
 
-class StartAnalysis(webapp2.RequestHandler):
+class StartAnalysis(BaseHandler):
     """POST request to the server to calculate the best possible matches for songs."""
     def post(self):
         playlist = self.request.get('playlist')
         language = self.request.get('language')
-        # to make sure that the user visiting this page is logged in
-        print(playlist)
-        print(language)
-        if playlist is not None and language in subreddits.keys() and access_token_global:
-            spotify_user_id = get_users_account_id(access_token_global)
-            template_vars = { 'access_token' : access_token_global }
+        access_token = self.session.get('access_token')
 
-            audio_features_json = get_playlists_audio_features(access_token_global, language, playlist)
+        # to make sure that the user visiting this page is logged in
+        if playlist and language in subreddits.keys() and access_token:
+            spotify_user_id = get_users_account_id(access_token)
+            template_vars = { 'access_token' : access_token }
+
+            audio_features_json = get_playlists_audio_features(access_token, language, playlist)
 
             avg_energy = round(calculate_average(audio_features_json, 'energy'), 3)
             avg_tempo = round(calculate_average(audio_features_json, 'tempo'), 3)
@@ -459,12 +475,21 @@ class StartAnalysis(webapp2.RequestHandler):
             #                          Track.instrumentalness <= (avg_instrumentalness + .1))
 
             match_ids = [match.track_id for match in matches]
-            tracks_stats = get_tracks_stats(access_token_global, match_ids)
+            tracks_stats = get_tracks_stats(access_token, match_ids)
             self.response.write(tracks_stats)
         else:
             self.response.status_int = 400
             json_error = json.dumps({'error' : 'Bad request.'})
             self.response.write(json_error)
+
+class Logout(BaseHandler):
+    def post(self):
+        if self.session:
+            # self.session.pop('access_token')
+            # self.session.pop('refresh_token')
+            self.session.clear()
+            global code_global
+            code_global = ''
 
 class Redirect(webapp2.RequestHandler):
     """Gets the code after getting redirected from the Spotify login page"""
@@ -477,18 +502,17 @@ class Redirect(webapp2.RequestHandler):
         template = env.get_template('templates/success.html')
         self.response.write(template.render())
 
-
-class Login2(webapp2.RequestHandler):
-    def get(self):
-        template = env.get_template('templates/loginPage2.html')
-        self.response.write(template.render())
-
 class Playlist(webapp2.RequestHandler):
     def get(self):
         template = env.get_template('templates/playlist.html')
         self.response.write(template.render())
 
 requests_toolbelt.adapters.appengine.monkeypatch()
+
+config_sessions = {}
+config_sessions['webapp2_extras.sessions'] = {
+    'secret_key': config.SESSIONS_KEY,
+}
 
 app = webapp2.WSGIApplication([
     ### Frontend
@@ -500,5 +524,7 @@ app = webapp2.WSGIApplication([
     ('/search', Search),
     ('/redirect', Redirect),
     ('/scrape', Scrape),
+    ### POST requests
     ('/start-analysis', StartAnalysis),
-], debug=True)
+    ('/logout', Logout),
+], debug=True, config=config_sessions)
