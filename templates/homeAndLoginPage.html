@@ -10,19 +10,21 @@
     <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css?family=Nunito:300,400,600" rel="stylesheet">
     <link href="../css/homeAndLoginPage.css" rel="stylesheet">
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-
+    <script src="../javascript/homeAndLoginPage.js"></script>
     <title>Kabloombox</title>
 </head>
 <body>
-
     <header>
-        <a href="#"><img src="../images/KabloomboxLogo.png" id="navbar-logo" /></a>
+        <a href="localhost:8080">
+            <img src="../images/KabloomboxLogo.png" id="navbar-logo" />
+        </a>
         <nav>
             <div class="navbar-profile-photo navbar-account">
                 <a href="#"><img src="../images/small.jpg" id="photo"></a>
             </div>
-            <div class="navbar-username navbar-account"><a href="#">Firstname Lastname</a></div>
+            <div class="navbar-username navbar-account">
+                <a href="#">Firstname Lastname</a>
+            </div>
             <!-- <ul>
                 <li><a href="#">Picture</a></li>
                 <li><a href="#">Name</a></li>
@@ -30,10 +32,7 @@
         </nav>
     </header>
     {% if code or access_token %}
-
-
-
-
+        <form action="/playlist" method="get">
         {% if playlists_json %}
             <div class="select-style">
                 <select class="language" name="language">
@@ -51,6 +50,9 @@
                 </select>
             </div>
         {% endif %}
+
+        <ul class="result-playlist-tracks"></ul>
+
         <h2>Your playlists:</h2>
         <ul class="matches"></ul>
         <div class="container">
@@ -58,7 +60,7 @@
                 {% for playlist in playlists_json %}
                     <div class="playlist-item">
                         <div class="playlist-cover">
-                            <button name="playlist" value="{{ playlist['id'] }}" class="playlist-button">
+                            <button name="id" type="submit" value="{{ playlist['id'] }}" class="playlist-button">
                                 {% if playlist['images'][0] %}
                                     <img src="{{ playlist['images'][0]['url']}}" class="image">
                                 {% endif %}
@@ -74,14 +76,15 @@
                 {% endfor %}
             </div>
         </div>
+        </form>
     {% else %}
-
         <div class="content">
             <div class="left-side">
                 <div class="description">
                     <h1>Find your new favorite songs and artists</h1>
-                    <p>Kabloombox translates your music taste into a foreign language
-                        to help you find your new favorite songs and artists.</p>
+                    <p>Kabloombox translates your music taste into a foreign language.</p>
+
+                    <p>To get started, sign in with your Spotify account below.</p>
                 </div>
 
                 <div class="login-section">
@@ -95,13 +98,7 @@
                 <img src="../images/background.png" id="artwork" draggable="false" />
                 <img src="../images/boombox.png" id="boombox" draggable="false" />
             </div>
-
-
-
         </div>
     {% endif %}
-
-
 </body>
-<script src="../javascript/homeAndLoginPage.js"></script>
 </html>

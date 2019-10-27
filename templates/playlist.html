@@ -10,19 +10,29 @@
     <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css?family=Nunito:300,400,600" rel="stylesheet">
     <link href="../css/playlist.css" rel="stylesheet">
+    <link href="../css/please-wait.css" rel="stylesheet">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-
+    <script src="../javascript/please-wait.min.js"></script>
+    <script src="../javascript/playlist.js"></script>
     <title>loginPage</title>
 </head>
 <body>
 
     <header>
-        <h3 class="navbar-logo">Kabloombox</h3>
+        <a href="/">
+            <img src="../images/KabloomboxLogo.png" id="navbar-logo" />
+        </a>
         <nav>
             <div class="navbar-profile-photo navbar-account">
                 <a href="#"><img src="../images/small.jpg" id="photo"></a>
             </div>
-            <div class="navbar-username navbar-account"><a href="#">Firstname Lastname</a></div>
+            <div class="navbar-username navbar-account">
+                <a href="#">Firstname Lastname</a>
+            </div>
+            <!-- <ul>
+                <li><a href="#">Picture</a></li>
+                <li><a href="#">Name</a></li>
+            </ul> -->
         </nav>
     </header>
 
@@ -42,27 +52,12 @@
         </div>
         <div class="result-playlist-body">
             <div class="body-header">
-                <span class="body-header-title">Header Title</span>
-                <span class="body-header-artist">Header Artist</span>
+                <span class="body-header-title">Title</span>
+                <span class="body-header-artist">Artist</span>
                 <span class="body-header-length"><img src="../images/clock.png" draggable="false"></span>
             </div>
-            <!--
-            <div class="result-playlist-track"> \
-                <span id="result-track-title">Title</span> \
-                <span id="result-track-artist">Artist</span> \
-                <span id="result-track-length">3:24</span> \
-            </div>')
-            -->
         </div>
     </div>
 
-
-
-
-
-
-
-
 </body>
-<script src="../javascript/homeAndLoginPage.js"></script>
 </html>

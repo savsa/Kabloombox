@@ -14,10 +14,6 @@ from google.appengine.ext import deferred
 from google.appengine.ext import ndb
 
 import requests_toolbelt.adapters.appengine
-requests_toolbelt.adapters.appengine.monkeypatch()
-
-# TODO:
-# - work with spotify link in main post and on wiki, not just in comments
 
 # Client Keys
 CLIENT_ID_SPOTIFY = config.CLIENT_ID_SPOTIFY
@@ -33,14 +29,28 @@ SPOTIFY_TOKEN_URL = 'https://accounts.spotify.com/api/token'
 SPOTIFY_API_BASE_URL = 'https://api.spotify.com'
 SPOTIFY_URL = 'open.spotify.com/user/'
 
-# redirect_uri = 'http://localhost:8080/search'
 redirect_uri = 'http://localhost:8080/redirect'
-# redirect_uri = 'https://kabloombox-219016.appspot.com/search'
+# redirect_uri = 'https://kabloombox-219016.appspot.com/redirect'
+
 scope = 'user-library-read user-read-private user-read-email playlist-read-private'
 
 access_token_global = ''
 refresh_token_global = ''
 code_global = ''
+
+subreddits = {
+    'german': 'German',
+    'french': 'french',
+    'spanish': 'learnspanish',
+    'italian': 'italianlearning',
+    'polish': 'learnpolish',
+    'portuguese': 'portuguese',
+    'russian': 'russian',
+    'cantonese': 'Cantonese',
+    'chinese': 'chineselanguage',
+    'finnish': 'LearnFinnish',
+    'japanese': 'LearnJapanese',
+}
 
 env = jinja2.Environment(
     loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
@@ -116,7 +126,6 @@ def get_playlists_track_ids(language, access_token):
             if len(track_ids) > 0:
                 ndb.put_multi(track_ids)
 
-
 def create_tracks_from_audio_analysis(language, access_token):
     """Retrieves the track_ids from Datastore, uses thoses to get the audio
     analyses of the tracks, then stores that in Datastore.
@@ -131,6 +140,7 @@ def create_tracks_from_audio_analysis(language, access_token):
         features_response = requests.get(spotify_audio_features_link, headers=headers)
         features = features_response.json()
         if features:
+            print('making track')
             track = Track(
                 track_id=id,
                 language=language,
@@ -146,6 +156,7 @@ def create_tracks_from_audio_analysis(language, access_token):
             tracks.append(track)
             # add tracks in bulk as to not get Error 429: too many requests
             if len(tracks) >= 100:
+                print('put tracks')
                 ndb.put_multi(tracks)
                 tracks = []
         time.sleep(1.4)
@@ -154,6 +165,15 @@ def create_tracks_from_audio_analysis(language, access_token):
     if len(tracks) > 0:
         ndb.put_multi(tracks)
 
+def get_songs_stats(access_token):
+    spotify_song_stats_link = 'https://api.spotify.com/v1/tracks/{}'.format(id)
+    headers = { 'Authorization' : 'Bearer ' + access_token }
+    stats_response = requests.get(spotify_song_stats_link, headers=headers)
+    stats = stats_response.json()
+
+    duration = stats["track"]["duration"]
+    duration = stats["track"]["duration"]
+    duration = stats["track"]["duration"]
 
 def find_url_in_comments(playlist_ids_local, playlist_ids_datastore, subreddit, language):
     """Finds links to Spotify playlists in the comment section of posts."""
@@ -189,19 +209,6 @@ def scan_subreddit(language, access_token):
     """Scrapes specified subreddit for all Spotify links, and use that data to get
     playlist ids, track ids, and audio analyses of each track.
     """
-    subreddits = {
-        'german': 'German',
-        'french': 'french',
-        'spanish': 'learnspanish',
-        'italian': 'italianlearning',
-        'polish': 'learnpolish',
-        'portuguese': 'portuguese',
-        'russian': 'russian',
-        'cantonese': 'Cantonese',
-        'chinese': 'chineselanguage',
-        'finnish': 'LearnFinnish',
-        'japanese': 'LearnJapanese',
-    }
     reddit = praw.Reddit(user_agent=USER_AGENT_REDDIT,
                          client_id=CLIENT_ID_REDDIT,
                          client_secret=CLIENT_SECRET_REDDIT,
@@ -249,17 +256,6 @@ def scan_subreddit(language, access_token):
     deferred.defer(create_tracks_from_audio_analysis, language, access_token)
     logging.debug('Tracks got')
 
-
-def get_users_playlists(access_token):
-    """get the current user's playlists to display them on the page"""
-    playlists_endpoint = 'https://api.spotify.com/v1/me/playlists'
-    headers = { 'Authorization' : 'Bearer ' + access_token }
-    params = { 'offset' : 0 }
-    playlists_response = requests.get(playlists_endpoint, headers=headers, params=params)
-    playlists_json = playlists_response.json()
-    return playlists_json['items']
-
-
 def get_playlists_audio_features(access_token, language, playlist_id):
     # get playlists track ids
     playlists_tracks_link = 'http://api.spotify.com/v1/playlists/{}/tracks'.format(playlist_id)
@@ -281,6 +277,25 @@ def get_playlists_audio_features(access_token, language, playlist_id):
     features_json = features_response.json()
     return features_json
 
+def get_tracks_stats(access_token, track_ids):
+    tracks_stats_endpoint = 'https://api.spotify.com/v1/tracks'
+    track_ids = track_ids[:50]
+    track_ids_string = ','.join(track_ids)
+
+    headers = { 'Authorization' : 'Bearer ' + access_token }
+    params = { 'ids' : track_ids_string }
+    tracks_stats_response = requests.get(tracks_stats_endpoint, headers=headers, params=params)
+    tracks_stats_json = tracks_stats_response.json()
+    return json.dumps(tracks_stats_json)
+
+def get_users_playlists(access_token):
+    """get the current user's playlists to display them on the page"""
+    playlists_endpoint = 'https://api.spotify.com/v1/me/playlists'
+    headers = { 'Authorization' : 'Bearer ' + access_token }
+    params = { 'offset' : 0 }
+    playlists_response = requests.get(playlists_endpoint, headers=headers, params=params)
+    playlists_json = playlists_response.json()
+    return playlists_json['items']
 
 def get_users_account_id(access_token):
     user_account_endpoint = 'https://api.spotify.com/v1/me'
@@ -289,81 +304,13 @@ def get_users_account_id(access_token):
     user_account_json = user_account_response.json()
     return user_account_json['id']
 
-
-def calculate_average_energy(features_json):
+def calculate_average(features_json, feature_type):
     if len(features_json) == 0: return -1
-    total_energy = 0
+    total_amount = 0
     for feature in features_json['audio_features']:
-        total_energy += feature['energy']
-    avg_energy = total_energy / len(features_json['audio_features'])
-    return avg_energy
-
-
-def calculate_average_acousticness(features_json):
-    if len(features_json) == 0: return -1
-    total_acousticness = 0
-    for feature in features_json['audio_features']:
-        total_acousticness += feature['acousticness']
-    avg_acousticness = total_acousticness / len(features_json['audio_features'])
-    return avg_acousticness
-
-
-def calculate_average_danceability(features_json):
-    if len(features_json) == 0: return -1
-    total_danceability = 0
-    for feature in features_json['audio_features']:
-        total_danceability += feature['danceability']
-    avg_danceability = total_danceability / len(features_json['audio_features'])
-    return avg_danceability
-
-
-def calculate_average_instrumentalness(features_json):
-    if len(features_json) == 0: return -1
-    total_instrumentalness = 0
-    for feature in features_json['audio_features']:
-        total_instrumentalness += feature['instrumentalness']
-    avg_instrumentalness = total_instrumentalness / len(features_json['audio_features'])
-    return avg_instrumentalness
-
-
-def calculate_average_liveness(features_json):
-    if len(features_json) == 0: return -1
-    total_liveness = 0
-    for feature in features_json['audio_features']:
-        total_liveness += feature['liveness']
-    avg_liveness = total_liveness / len(features_json['audio_features'])
-    return avg_liveness
-
-
-def calculate_average_valence(features_json):
-    if len(features_json) == 0: return -1
-    total_valence = 0
-    for feature in features_json['audio_features']:
-        total_valence += feature['valence']
-    avg_valence = total_valence / len(features_json['audio_features'])
-    return avg_valence
-
-
-def calculate_average_tempo(features_json):
-    if len(features_json) == 0: return -1
-    total_tempo = 0
-    for feature in features_json['audio_features']:
-        total_tempo += feature['tempo']
-    avg_tempo = total_tempo / len(features_json['audio_features'])
-    return avg_tempo
-
-
-def calculate_average_loudness(features_json):
-    if len(features_json) == 0: return -1
-    total_loudness = 0
-    for feature in features_json['audio_features']:
-        total_loudness += feature['loudness']
-    avg_loudness = total_loudness / len(features_json['audio_features'])
-    return avg_loudness
-
-
-# TODO: Implement 'mode'?
-
+        total_amount += feature[feature_type]
+    avg_amount = float(total_amount) / len(features_json['audio_features'])
+    return avg_amount
 
 # Pages for adding songs to the database
 
@@ -371,39 +318,6 @@ class AddSongs(webapp2.RequestHandler):
     def get(self):
         template = env.get_template('templates/home.html')
         self.response.write(template.render())
-
-
-class Search(webapp2.RequestHandler):
-    def get(self):
-        code = self.request.get('code')
-        template_vars = { 'code' : code }
-
-        template = env.get_template('templates/search.html')
-        self.response.write(template.render(template_vars))
-
-    def post(self):
-        code = self.request.get('code')
-        language = self.request.get('language')
-
-        if code:
-            payload = {
-                'grant_type' : 'authorization_code',
-                'code' : code,
-                'redirect_uri' : redirect_uri,
-            }
-            headers = { 'Authorization' : 'Basic ' + base64.b64encode(CLIENT_ID_SPOTIFY + ':' + CLIENT_SECRET_SPOTIFY) }
-            response = requests.post(SPOTIFY_TOKEN_URL, data=payload, headers=headers)
-            token = response.json()
-
-            if token:
-                access_token = token['access_token']
-                refresh_token = token['refresh_token']
-
-                scan_subreddit(language, access_token)
-
-        template = env.get_template('templates/search.html')
-        self.response.write(template.render())
-
 
 class Login(webapp2.RequestHandler):
     def get(self):
@@ -424,6 +338,37 @@ class Login(webapp2.RequestHandler):
         template = env.get_template('templates/login.html')
         self.response.write(template.render())
 
+class Search(webapp2.RequestHandler):
+    def get(self):
+        code = self.request.get('code')
+        template_vars = { 'code' : code }
+
+        template = env.get_template('templates/search.html')
+        self.response.write(template.render(template_vars))
+
+class Scrape(webapp2.RequestHandler):
+    def get(self):
+        global code_global
+        language = self.request.get('language')
+
+        if code_global:
+            payload = {
+                'grant_type' : 'authorization_code',
+                'code' : code_global,
+                'redirect_uri' : redirect_uri,
+            }
+            headers = { 'Authorization' : 'Basic ' + base64.b64encode(CLIENT_ID_SPOTIFY + ':' + CLIENT_SECRET_SPOTIFY) }
+            response = requests.post(SPOTIFY_TOKEN_URL, data=payload, headers=headers)
+            token = response.json()
+
+            if token:
+                access_token = token['access_token']
+                refresh_token = token['refresh_token']
+
+                scan_subreddit(language, access_token)
+
+        template = env.get_template('templates/search.html')
+        self.response.write(template.render())
 
 # Pages for the main website
 
@@ -478,57 +423,48 @@ class StartAnalysis(webapp2.RequestHandler):
         playlist = self.request.get('playlist')
         language = self.request.get('language')
         # to make sure that the user visiting this page is logged in
-        if playlist and access_token_global:
+        print(playlist)
+        print(language)
+        if playlist is not None and language in subreddits.keys() and access_token_global:
             spotify_user_id = get_users_account_id(access_token_global)
             template_vars = { 'access_token' : access_token_global }
 
             audio_features_json = get_playlists_audio_features(access_token_global, language, playlist)
 
-            avg_energy = round(calculate_average_energy(audio_features_json), 3)
-            avg_tempo = round(calculate_average_tempo(audio_features_json), 3)
-            avg_danceability = round(calculate_average_danceability(audio_features_json), 3)
-            avg_energy = round(calculate_average_acousticness(audio_features_json), 3)
-            avg_instrumentalness = round(calculate_average_instrumentalness(audio_features_json), 3)
-            avg_liveness = round(calculate_average_liveness(audio_features_json), 3)
-
-            matches = []
+            avg_energy = round(calculate_average(audio_features_json, 'energy'), 3)
+            avg_tempo = round(calculate_average(audio_features_json, 'tempo'), 3)
+            avg_danceability = round(calculate_average(audio_features_json, 'danceability'), 3)
+            avg_energy = round(calculate_average(audio_features_json, 'acousticness'), 3)
+            avg_instrumentalness = round(calculate_average(audio_features_json, 'instrumentalness'), 3)
+            avg_liveness = round(calculate_average(audio_features_json, 'liveness'), 3)
 
             # first, run the 'energy' filter
-            first_matches = Track.query().filter(Track.energy >= (avg_energy - .1),
-                                                 Track.energy <= (avg_energy + .1))
-            first_matches_len = len(matches)
-            print(first_matches_len)
+            matches = []
+            matches = Track.query().filter(Track.energy >= (avg_energy - .1))
+            # first_matches_len = matches.count()
 
             # if there are too many matches, run the 'danceability' filter
-            second_matches = 0
-            if len(matches) > 20:
-                second_matches = matches.filter(Track.danceability >= (avg_danceability - .1),
-                                                Track.danceability <= (avg_danceability + .1))
-            second_matches_len = len(matches)
-            print(len(second_matches_len))
-            if 20 - first_matches_len < 20 - second_matches_len:
-                matches = first_matches
-            else:
-                matches = second_matches
+            # second_matches = []
+            # if matches.count() > 20:
+            #     second_matches = matches.filter(Track.danceability >= (avg_danceability - .1),
+            #                                     Track.danceability <= (avg_danceability + .1))
+            # second_matches_len = matches.count()
+            # if 20 - first_matches_len < 20 - second_matches_len:
+            #     matches = first_matches
+            # else:
+            #     matches = second_matches
 
-
+            #
             # matches = matches.filter(Track.instrumentalness >= (avg_instrumentalness - .1),
             #                          Track.instrumentalness <= (avg_instrumentalness + .1))
 
-
             match_ids = [match.track_id for match in matches]
-            self.response.write(match_ids)
-
-    # loudness = ndb.FloatProperty()
-    # tempo = ndb.FloatProperty()
-    # danceability = ndb.FloatProperty()
-    # energy = ndb.FloatProperty()
-    # acousticness = ndb.FloatProperty()
-    # instrumentalness = ndb.FloatProperty()
-    # liveness = ndb.FloatProperty()
-    # valence = ndb.FloatProperty()
-    # mode = ndb.IntegerProperty()
-
+            tracks_stats = get_tracks_stats(access_token_global, match_ids)
+            self.response.write(tracks_stats)
+        else:
+            self.response.status_int = 400
+            json_error = json.dumps({'error' : 'Bad request.'})
+            self.response.write(json_error)
 
 class Redirect(webapp2.RequestHandler):
     """Gets the code after getting redirected from the Spotify login page"""
@@ -536,6 +472,7 @@ class Redirect(webapp2.RequestHandler):
         global code_global
         code_global = self.request.get('code')
         self.redirect('/')
+        # self.redirect('/search')
 
         template = env.get_template('templates/success.html')
         self.response.write(template.render())
@@ -551,15 +488,17 @@ class Playlist(webapp2.RequestHandler):
         template = env.get_template('templates/playlist.html')
         self.response.write(template.render())
 
+requests_toolbelt.adapters.appengine.monkeypatch()
 
 app = webapp2.WSGIApplication([
     ### Frontend
-    # ('/', Playlist),
     ('/', HomeAndLoginPage),
-    ('/start-analysis', StartAnalysis),
+    ('/playlist', Playlist),
     ### Backend
     ('/add', AddSongs),
     ('/login', Login),
     ('/search', Search),
     ('/redirect', Redirect),
+    ('/scrape', Scrape),
+    ('/start-analysis', StartAnalysis),
 ], debug=True)
