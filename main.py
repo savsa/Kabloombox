@@ -9,7 +9,6 @@ import logging
 
 import praw
 import config
-# from session import Session
 
 from google.appengine.ext import deferred
 from google.appengine.ext import ndb
@@ -79,11 +78,6 @@ class TrackID(ndb.Model):
 class PlaylistID(ndb.Model):
     value = ndb.StringProperty()
     language = ndb.StringProperty()
-
-class AuthToken(ndb.Model):
-    access_token = ndb.StringProperty()
-    refresh_token = ndb.StringProperty()
-    spotify_user_id = ndb.StringProperty()
 
 class Token:
     def __init__(self, access_token, refresh_token):
@@ -394,11 +388,6 @@ class Redirect(webapp2.RequestHandler):
         self.redirect('/')
         # self.redirect('/search')
 
-        template = env.get_template('templates/success.html')
-        self.response.write(template.render())
-
-
-
 # Pages for adding songs to the database
 
 class AddSongs(webapp2.RequestHandler):
@@ -408,22 +397,11 @@ class AddSongs(webapp2.RequestHandler):
 
 class Login(webapp2.RequestHandler):
     def get(self):
-        headers = {
-            'client_id' : CLIENT_ID_SPOTIFY,
-            'response_type' : 'code',
-            'redirect_uri' : redirect_uri,
-            'scope' : scope,
-        }
-
         url = '{}?client_id={}' \
                 '&response_type=code' \
                 '&redirect_uri={}' \
                 '&scope={}'.format(SPOTIFY_AUTH_URL, CLIENT_ID_SPOTIFY, redirect_uri, scope)
-
         self.redirect(url)
-
-        template = env.get_template('templates/login.html')
-        self.response.write(template.render())
 
 class Search(webapp2.RequestHandler):
     def get(self):
@@ -458,7 +436,7 @@ class HomeAndLoginPage(BaseHandler):
         access_token = self.session.get('access_token')
         refresh_token = self.session.get('refresh_token')
         if access_token:
-            spotify_user_id = get_users_account_id(access_token, self.session)
+            # spotify_user_id = get_users_account_id(access_token, self.session)
             playlists_json = get_users_playlists(access_token, self.session)
             template_vars['playlists_json'] = playlists_json
             template_vars['access_token'] = access_token
@@ -467,12 +445,11 @@ class HomeAndLoginPage(BaseHandler):
             if token:
                 access_token = token.access_token
                 refresh_token = token.refresh_token
+
                 self.session['access_token'] = access_token
                 self.session['refresh_token'] = refresh_token
-
                 spotify_user_id = get_users_account_id(access_token, self.session)
                 playlists_json = get_users_playlists(access_token, self.session)
-
                 template_vars['playlists_json'] = playlists_json
                 template_vars['access_token'] = access_token
 
@@ -486,7 +463,6 @@ class Playlist(webapp2.RequestHandler):
         template = env.get_template('templates/playlist.html')
         self.response.write(template.render())
 
-
 # POST requests
 
 class StartAnalysis(BaseHandler):
@@ -498,7 +474,7 @@ class StartAnalysis(BaseHandler):
 
         # to make sure that the user visiting this page is logged in
         if playlist and language in subreddits.keys() and access_token:
-            spotify_user_id = get_users_account_id(access_token, self.session)
+            # spotify_user_id = get_users_account_id(access_token, self.session)
             template_vars = { 'access_token' : access_token }
 
             audio_features_json = get_playlists_audio_features(access_token, language, playlist, self.session)
