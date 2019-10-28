@@ -34,7 +34,7 @@ SPOTIFY_URL = 'open.spotify.com/user/'
 redirect_uri = 'http://localhost:8080/redirect'
 # redirect_uri = 'https://kabloombox-219016.appspot.com/redirect'
 
-scope = 'user-library-read user-read-private user-read-email playlist-read-private'
+scope = 'user-library-read user-read-private user-read-email playlist-read-private user-modify-playback-state'
 
 code_global = ''
 
@@ -93,19 +93,57 @@ class Token:
 
 # Functions
 
-def get_playlists_track_ids(language, access_token):
+def logout(session):
+    session.clear()
+    global code_global
+    code_global = ''
+
+def get_access_from_refresh_token(refresh_token):
+    payload = {
+        'grant_type' : 'refresh_token',
+        'refresh_token' : refresh_token
+    }
+    headers = { 'Authorization' : 'Basic ' + base64.b64encode(CLIENT_ID_SPOTIFY + ':' + CLIENT_SECRET_SPOTIFY) }
+    response = requests.post(SPOTIFY_TOKEN_URL, data=payload, headers=headers)
+    response_json = response.json()
+    try:
+        access_token = response_json['access_token']
+        return access_token
+    except KeyError:
+        logout(session)
+        return None
+
+def request_endpoint(endpoint, session, headers, params={}):
+    """Make GET request to the endpoint. Check for expired access_token."""
+    response = requests.get(endpoint, headers=headers, params=params)
+    if response.status_code == 401 and session:
+        refresh_token = session.get('refresh_token')
+        new_access_token = get_access_from_refresh_token(refresh_token)
+        headers = { 'Authorization' : 'Bearer ' + new_access_token }
+        response = requests.get(endpoint, headers=headers, params=params)
+        if response:
+            session['access_token'] = new_access_token
+        else:
+            raise Exception('GETTING NEW ACCESS TOKEN DIDN\'T WORK')
+    elif not response and session:
+        # failed in some other way that wasn't an expired token
+        logout(session)
+    return response
+
+
+def get_playlists_track_ids(language, access_token, session):
     """Using the playlist ids, get all of their tracks and track ids."""
     track_ids = []
     playlist_ids = PlaylistID.query().filter(PlaylistID.language == language)
     for playlist_id in playlist_ids:
         id = playlist_id.value
-        playlists_tracks_link = 'http://api.spotify.com/v1/playlists/{}/tracks'.format(id)
+        playlists_tracks_endpoint = 'http://api.spotify.com/v1/playlists/{}/tracks'.format(id)
         headers = { 'Authorization' : 'Bearer ' + access_token }
         params = {
             'fields': 'total,items(track(id))',
             'offset': 0,
         }
-        tracks_response = requests.get(playlists_tracks_link, headers=headers, params=params)
+        tracks_response = request_endpoint(playlists_tracks_endpoint, session, headers, params)
         tracks_json = tracks_response.json()
 
         # Spotify limits to only 100 songs per request, so set starting location
@@ -113,7 +151,7 @@ def get_playlists_track_ids(language, access_token):
         if len(tracks_json) > 1: # if valid playlist URL
             for i in range((tracks_json['total'] / 100) + 1):
                 try:
-                    tracks_response = requests.get(playlists_tracks_link, headers=headers, params=params)
+                    tracks_response = request_endpoint(playlists_tracks_endpoint, session, headers, params)
                     tracks_json = tracks_response.json()
                     for element in tracks_json['items']:
                         track_ids_datastore = TrackID.query().filter(TrackID.value == element['track']['id']).get()
@@ -140,9 +178,9 @@ def create_tracks_from_audio_analysis(language, access_token):
 
     for track_id in track_ids:
         id = track_id.value
-        spotify_audio_features_link = 'http://api.spotify.com/v1/audio-features/{}'.format(id)
+        spotify_audio_features_endpoint = 'http://api.spotify.com/v1/audio-features/{}'.format(id)
         headers = { 'Authorization' : 'Bearer ' + access_token }
-        features_response = requests.get(spotify_audio_features_link, headers=headers)
+        features_response = request_endpoint(spotify_audio_features_endpoint, session, headers)
         features = features_response.json()
         if features:
             print('making track')
@@ -251,15 +289,16 @@ def scan_subreddit(language, access_token):
     deferred.defer(create_tracks_from_audio_analysis, language, access_token)
     logging.debug('Tracks got')
 
-def get_playlists_audio_features(access_token, language, playlist_id):
-    # get playlists track ids
-    playlists_tracks_link = 'http://api.spotify.com/v1/playlists/{}/tracks'.format(playlist_id)
+def get_playlists_audio_features(access_token, language, playlist_id, session):
+    """Get the playlist's audio features for each track."""
+    # get playlist's track ids
+    playlists_tracks_endpoint = 'http://api.spotify.com/v1/playlists/{}/tracks'.format(playlist_id)
     headers = { 'Authorization' : 'Bearer ' + access_token }
     params = {
         'fields' : 'total,items(track(id))',
         'offset' : 0,
     }
-    tracks_response = requests.get(playlists_tracks_link, headers=headers, params=params)
+    tracks_response = request_endpoint(playlists_tracks_endpoint, session, headers, params)
     tracks_json = tracks_response.json()
     track_ids = [track['track']['id'] for track in tracks_json['items'] if track['track']['id'] is not None]
     track_ids_string = ','.join(track_ids)
@@ -268,38 +307,45 @@ def get_playlists_audio_features(access_token, language, playlist_id):
     tracks_features_endpoint = 'https://api.spotify.com/v1/audio-features'
     headers = { 'Authorization' : 'Bearer ' + access_token }
     params = { 'ids' : track_ids_string }
-    features_response = requests.get(tracks_features_endpoint, headers=headers, params=params)
+    features_response = request_endpoint(tracks_features_endpoint, session, headers, params)
     features_json = features_response.json()
     return features_json
 
-def get_tracks_stats(access_token, track_ids):
+def get_tracks_stats(access_token, track_ids, session):
+    """Get the track's stats, including song title, artist, and length."""
     tracks_stats_endpoint = 'https://api.spotify.com/v1/tracks'
     track_ids = track_ids[:50]
     track_ids_string = ','.join(track_ids)
 
     headers = { 'Authorization' : 'Bearer ' + access_token }
     params = { 'ids' : track_ids_string }
-    tracks_stats_response = requests.get(tracks_stats_endpoint, headers=headers, params=params)
+    tracks_stats_response = request_endpoint(tracks_stats_endpoint, session, headers, params)
     tracks_stats_json = tracks_stats_response.json()
     return json.dumps(tracks_stats_json)
 
-def get_users_playlists(access_token):
-    """get the current user's playlists to display them on the page"""
+def get_users_playlists(access_token, session):
+    """Get the current user's playlists to display them on the page."""
     playlists_endpoint = 'https://api.spotify.com/v1/me/playlists'
     headers = { 'Authorization' : 'Bearer ' + access_token }
     params = { 'offset' : 0 }
-    playlists_response = requests.get(playlists_endpoint, headers=headers, params=params)
+    playlists_response = request_endpoint(playlists_endpoint, session, headers, params)
     playlists_json = playlists_response.json()
     return playlists_json['items']
 
-def get_users_account_id(access_token):
+def get_users_account_id(access_token, session):
+    """Get the current user's account id"""
     user_account_endpoint = 'https://api.spotify.com/v1/me'
     headers = { 'Authorization' : 'Bearer ' + access_token }
-    user_account_response = requests.get(user_account_endpoint, headers=headers)
+    user_account_response = request_endpoint(user_account_endpoint, session, headers=headers)
     user_account_json = user_account_response.json()
     return user_account_json['id']
 
 def calculate_average(features_json, feature_type):
+    """Average the specified audio feature of a playlist.
+
+    Valid feature_type's are: loudness, tempo, danceability, energy,
+    acousticness, instrumentalness, liveness, valence, and mode.
+    """
     if len(features_json) == 0: return -1
     total_amount = 0
     for feature in features_json['audio_features']:
@@ -308,6 +354,7 @@ def calculate_average(features_json, feature_type):
     return avg_amount
 
 def get_token(code):
+    """Get a valid access and refresh token from a code."""
     payload = {
         'grant_type' : 'authorization_code',
         'code' : code,
@@ -322,21 +369,6 @@ def get_token(code):
     except KeyError:
         return None
 
-def get_access_from_refresh_token(refresh_token):
-    payload = {
-        'grant_type' : 'refresh_token',
-        'refresh_token' : refresh_token
-    }
-    headers = { 'Authorization' : 'Basic ' + base64.b64encode(CLIENT_ID_SPOTIFY + ':' + CLIENT_SECRET_SPOTIFY) }
-    response = requests.post(SPOTIFY_TOKEN_URL, data=payload, headers=headers)
-    response_json = response.json()
-    try:
-        access_token = response_json['access_token']
-        return access_token
-    except KeyError:
-        return None
-
-# Pages for adding songs to the database
 
 class BaseHandler(webapp2.RequestHandler):
     def dispatch(self):
@@ -353,6 +385,21 @@ class BaseHandler(webapp2.RequestHandler):
     def session(self):
         # Returns a session using the default cookie key.
         return self.session_store.get_session()
+
+class Redirect(webapp2.RequestHandler):
+    """Gets the code after getting redirected from the Spotify login page"""
+    def get(self):
+        global code_global
+        code_global = self.request.get('code')
+        self.redirect('/')
+        # self.redirect('/search')
+
+        template = env.get_template('templates/success.html')
+        self.response.write(template.render())
+
+
+
+# Pages for adding songs to the database
 
 class AddSongs(webapp2.RequestHandler):
     def get(self):
@@ -396,7 +443,7 @@ class Scrape(webapp2.RequestHandler):
             if token:
                 self.session['access_token'] = token.access_token
                 self.session['refresh_token'] = token.refresh_token
-                scan_subreddit(language, token.access_token)
+                scan_subreddit(language, token.access_token, self.session)
 
         template = env.get_template('templates/search.html')
         self.response.write(template.render())
@@ -411,8 +458,8 @@ class HomeAndLoginPage(BaseHandler):
         access_token = self.session.get('access_token')
         refresh_token = self.session.get('refresh_token')
         if access_token:
-            spotify_user_id = get_users_account_id(access_token)
-            playlists_json = get_users_playlists(access_token)
+            spotify_user_id = get_users_account_id(access_token, self.session)
+            playlists_json = get_users_playlists(access_token, self.session)
             template_vars['playlists_json'] = playlists_json
             template_vars['access_token'] = access_token
         elif code_global:
@@ -423,8 +470,8 @@ class HomeAndLoginPage(BaseHandler):
                 self.session['access_token'] = access_token
                 self.session['refresh_token'] = refresh_token
 
-                spotify_user_id = get_users_account_id(access_token)
-                playlists_json = get_users_playlists(access_token)
+                spotify_user_id = get_users_account_id(access_token, self.session)
+                playlists_json = get_users_playlists(access_token, self.session)
 
                 template_vars['playlists_json'] = playlists_json
                 template_vars['access_token'] = access_token
@@ -432,6 +479,15 @@ class HomeAndLoginPage(BaseHandler):
         template = env.get_template('templates/homeAndLoginPage.html')
         self.response.write(template.render(template_vars))
 
+
+
+class Playlist(webapp2.RequestHandler):
+    def get(self):
+        template = env.get_template('templates/playlist.html')
+        self.response.write(template.render())
+
+
+# POST requests
 
 class StartAnalysis(BaseHandler):
     """POST request to the server to calculate the best possible matches for songs."""
@@ -442,10 +498,10 @@ class StartAnalysis(BaseHandler):
 
         # to make sure that the user visiting this page is logged in
         if playlist and language in subreddits.keys() and access_token:
-            spotify_user_id = get_users_account_id(access_token)
+            spotify_user_id = get_users_account_id(access_token, self.session)
             template_vars = { 'access_token' : access_token }
 
-            audio_features_json = get_playlists_audio_features(access_token, language, playlist)
+            audio_features_json = get_playlists_audio_features(access_token, language, playlist, self.session)
 
             avg_energy = round(calculate_average(audio_features_json, 'energy'), 3)
             avg_tempo = round(calculate_average(audio_features_json, 'tempo'), 3)
@@ -475,7 +531,7 @@ class StartAnalysis(BaseHandler):
             #                          Track.instrumentalness <= (avg_instrumentalness + .1))
 
             match_ids = [match.track_id for match in matches]
-            tracks_stats = get_tracks_stats(access_token, match_ids)
+            tracks_stats = get_tracks_stats(access_token, match_ids, self.session)
             self.response.write(tracks_stats)
         else:
             self.response.status_int = 400
@@ -485,27 +541,20 @@ class StartAnalysis(BaseHandler):
 class Logout(BaseHandler):
     def post(self):
         if self.session:
-            # self.session.pop('access_token')
-            # self.session.pop('refresh_token')
-            self.session.clear()
-            global code_global
-            code_global = ''
+            logout(self.session)
 
-class Redirect(webapp2.RequestHandler):
-    """Gets the code after getting redirected from the Spotify login page"""
-    def get(self):
-        global code_global
-        code_global = self.request.get('code')
-        self.redirect('/')
-        # self.redirect('/search')
+class Play(BaseHandler):
+    def post(self):
+        uri = self.request.get('uri')
+        access_token = self.session.get('access_token')
 
-        template = env.get_template('templates/success.html')
-        self.response.write(template.render())
-
-class Playlist(webapp2.RequestHandler):
-    def get(self):
-        template = env.get_template('templates/playlist.html')
-        self.response.write(template.render())
+        play_endpoint = 'http://api.spotify.com/v1/me/player/play'
+        headers = { 'Authorization' : 'Bearer ' + access_token }
+        data = { "uris": [uri] }
+        print(data)
+        response = requests.put(play_endpoint, headers=headers, data=data)
+        if response.status_code != 204:
+            print(response.text)
 
 requests_toolbelt.adapters.appengine.monkeypatch()
 
@@ -527,4 +576,5 @@ app = webapp2.WSGIApplication([
     ### POST requests
     ('/start-analysis', StartAnalysis),
     ('/logout', Logout),
+    ('/play', Play),
 ], debug=True, config=config_sessions)

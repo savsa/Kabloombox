@@ -321,11 +321,30 @@ button:hover {
     font-family: 'Open Sans', sans-serif;
 }
 
-h2 {
+#choose {
     font-family: 'Open Sans', sans-serif;
+    text-align: center;
+    font-size: 30px;
 }
 
+#choose-language {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    margin: auto;
+}
 
+#dropdown {
+    /* margin: auto;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center; */
+}
+
+select {
+    background-color: white;
+}
 
 
 /* .select-style {
@@ -419,3 +438,11 @@ nav {
     width: 3em;
     border-radius: 100%;
 }
+
+
+
+
+
+
+
+

@@ -24,27 +24,47 @@ $(document).ready(function() {
                 let artist = track['artists'][0]['name'];
                 let id = track['id'];
                 let duration_ms = track['duration_ms'];
+                let uri = track['uri'];
                 duration_ms = parseInt(duration_ms);
 
                 let duration_m = Math.floor((duration_ms / 1000) / 60);
                 let duration_s = forceTwoDigits(Math.floor((duration_ms / 1000) % 60));
 
-                $('.result-playlist-body').append('<div class="result-playlist-track"><span id="result-track-title">' + title +
+                let $track = $('<div class="result-playlist-track"><span id="result-track-title">' + title +
                     '</span><span id="result-track-artist">' + artist +
                     '</span><span id="result-track-length">' + duration_m + ':' + duration_s +
                     '</span></div>');
+                $track.data('uri', uri);
+                $('.result-playlist-body').append($track);
             }
 
             loadingScreen.finish();
         },
         error: function(error) {
             // TODO: FIX
-            console.log('Error' + error);
-            loadingScreen.updateLoadingHtml('<h3>Oops! Something went wrong.</h3>');
             loadingScreen.finish();
+            // window.location.href = '/';
         }
     });
+
+
+    // $('body').delegate('.result-playlist-track','click',function() {
+    //     console.log('blah');
+    //     // alert(1);
+    //     $.post('http://localhost:8080/play?uri=' + $('.result-playlist-track').data('uri'));
+    // });
+
+    $('body').on('click', '.result-playlist-track', function() {
+        console.log('blah');
+        alert(1);
+        $.post('http://localhost:8080/play?uri=' + $('.result-playlist-track').data('uri'));
+    });
+
+
 });
+
+
+
 
 function forceTwoDigits(n) {
   return ('0' + n).slice(-2);
