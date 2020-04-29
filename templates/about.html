@@ -8,13 +8,10 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,500,600" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css?family=Nunito:300,400,600" rel="stylesheet">
-    <link href="../css/playlist.css" rel="stylesheet">
-    <link href="../css/please-wait.css" rel="stylesheet">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-    <script src="../javascript/please-wait.min.js"></script>
-    <script src="../javascript/playlist.js"></script>
-    <title>Kabloombox</title>
+    <link href="../css/about.css" rel="stylesheet">
+    <!-- <script src="../javascript/playlist.js"></script> -->
+    <title>About - Kabloombox</title>
 </head>
 <body>
 
@@ -22,14 +19,13 @@
         <a href="/" id="logo">
             <img src="../images/KabloomboxLogo.png" id="navbar-logo" />
         </a>
-        <div class="about-wrapper">
-            <ul id="blah">
-                <a href="/about"><li>About</li></a>
-            </ul>
-        </div>
-        <!-- <ul id="blah">
-            <a href="/about"><li>About</li></a>
-        </ul> -->
+        <a href="/about">
+            <div class="about-wrapper">
+                <ul id="blah">
+                    <li>About</li>
+                </ul>
+            </div>
+        </a>
         <nav>
             <div class="navbar-profile-photo navbar-account">
                 {% if access_token and profile_photo %}
@@ -61,34 +57,19 @@
             {% endif %}
         </nav>
     </header>
-    <div class="results">
-        <div class="result-playlist-header">
-            <img src="../images/playlist-photo.png" class="result-playlist-photo"></img>
-            <div class="result-playlist-info">
-                <span id="result-playlist-name">Playlist Name</span>
-                <span id="result-playlist-language">German</span>
 
-                <form action="/create" method="post">
-                    <!-- <button class="result-playlist-add-button" type="submit"> -->
-                    <div class="result-playlist-add-button">
-                        <span class="add-text">Add this playlist</span>
-                        <span class="plus-symbol">
-                            <img src="https://img.icons8.com/nolan/20/000000/plus-math.png" draggable="false">
-                        </span>
-                    </div>
-                    <!-- </button> -->
-                </form>
-
-            </div>
-        </div>
-        <div class="result-playlist-body">
-            <div class="body-header">
-                <span class="body-header-title">Title</span>
-                <span class="body-header-artist">Artist</span>
-                <span class="body-header-length"><img src="../images/clock.png" draggable="false"></span>
-            </div>
-        </div>
+    <div class="main-body">
+        <p>
+            Kabloombox creates a personalized playlist for you containing songs in a
+            completely different language.
+        </p>
+        <p>
+            Do you really like a certain music genre and are curious what that genre is like in other languages?
+            <br />
+            Or are you looking to expand your music taste but don’t know where to start?
+        <p>
+            Just provide Kabloombox with one of your Spotify playlists, and it will create a stylized playlist for you in a language of your choice!
+        </p>
     </div>
-
 </body>
 </html>

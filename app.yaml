@@ -23,8 +23,8 @@ libraries:
 builtins:
 - deferred: on
 
-# error_handlers:
-#   - file: templates/error.html
+error_handlers:
+  - file: templates/error.html
 
 # env_variables:
 # - GAE_USE_SOCKETS_HTTPLIB : 'anyvalue'

@@ -16,31 +16,55 @@
 </head>
 <body>
     <header>
-        <a href="localhost:8080">
+        <a href="/" id="logo">
             <img src="../images/KabloomboxLogo.png" id="navbar-logo" />
         </a>
+        <a href="/about">
+            <div class="about-wrapper">
+                <ul id="blah">
+                    <li>About</li>
+                </ul>
+            </div>
+        </a>
+        <!-- <ul id="blah">
+            <a href="/about"><li>About</li></a>
+        </ul> -->
         <nav>
             <div class="navbar-profile-photo navbar-account">
-                <a href="#"><img src="../images/small.jpg" id="photo"></a>
+                {% if access_token and profile_photo %}
+                    <img src={{ profile_photo}} id="photo" />
+                {% elif access_token %}
+                    <img src="../images/default.png" id="photo" />
+                {% endif %}
+
             </div>
-            <div class="navbar-username navbar-account">
-                <a href="#">Firstname Lastname</a>
-            </div>
-            <!-- <ul>
-                <li><a href="#">Picture</a></li>
-                <li><a href="#">Name</a></li>
-            </ul> -->
-                <button type="submit" id="logout">Logout</button>
+
+            {% if access_token %}
+                <div class="navbar-username navbar-account">
+                    <div class="container-2">
+                        <div class="dropdown">
+                            <div class="select">
+                                <span>{{ profile_name }}</span>
+                                <!-- <i class="fa fa-chevron-left"></i> -->
+                                <img src="../images/dropdown.png" id="arrow" />
+                        </div>
+                        <a href="/logout">
+                            <ul class="dropdown-menu">
+                              <li>Logout</li>
+                            </ul>
+                        </a>
+                      </div>
+
+                    </div>
+                </div>
+            {% endif %}
         </nav>
     </header>
     {% if code or access_token %}
         <h2 id="choose">Choose a language:</h2>
 
-
-
-
         <form action="/playlist" method="get" id="dropdown">
-            <div id="choose-language">
+            <div id="choose-language" class="input">
                 <div class="select-style">
                     <select class="language" name="language">
                         <option value="german">German</option>
@@ -59,7 +83,7 @@
             </div>
 
 
-            <div class="container">
+            <div class="container input">
                 <h2 id="choose">Choose a playlist:</h2>
                 <div class="playlist-grid">
                     {% for playlist in playlists_json %}

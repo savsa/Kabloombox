@@ -14,10 +14,9 @@ html, body {
 header {
     background-color: white;
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: 1fr 1fr minmax(100px, 8fr) 1fr;
     z-index: 999;
     width: 100%;
-    box-shadow: 0px 3px 10px rgba(0, 0, 0, 0.2);
 }
 
 nav {
@@ -28,6 +27,10 @@ nav {
     place-self: center;
     grid-column: 3/4;
     /* justify-self:end; */
+}
+
+a {
+    text-decoration: none;
 }
 
 .navbar-profile-photo {
@@ -329,7 +332,8 @@ h3 {
 header {
     background-color: white;
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    ggrid-template-columns: 1fr 1fr 8fr 1fr;
+    grid-column-gap: 40px;
     z-index: 999;
     width: 100%;
     /* box-shadow: 0px 3px 10px rgba(0, 0, 0, 0.2); */
@@ -455,3 +459,79 @@ nav {
 
 
 
+
+
+/* dropdown menu: https://codepen.io/General-Dev/pen/JRjwPa */
+.dropdown {
+  width: 100px;
+  display: inline-block;
+  background-color: white;
+  transition: all .5s ease;
+  position: relative;
+  font-size: 14px;
+  text-align: left;
+  margin-right: 30px;
+  outline-style: none;
+}
+.dropdown .select {
+    cursor: pointer;
+    display: block;
+}
+
+.dropdown .select > img {
+
+    cursor: pointer;
+    transition: all .3s ease-in-out;
+    height: 14px;
+    width: 14px;
+}
+
+.dropdown .dropdown-menu {
+    position: absolute;
+    background-color: #fff;
+    width: 100%;
+    left: 0;
+    margin-top: 1px;
+    box-shadow: 0 1px 2px rgb(204, 204, 204);
+    border-radius: 5px;
+    overflow: hidden;
+    display: none;
+    overflow-y: auto;
+    z-index: 9;
+}
+.dropdown .dropdown-menu li {
+    padding: 15px;
+    transition: all .2s ease-in-out;
+    cursor: pointer;
+}
+.dropdown .dropdown-menu {
+    padding: 0;
+    list-style: none;
+}
+.dropdown .dropdown-menu li:hover {
+    background-color: #f2f2f2;
+}
+.dropdown .dropdown-menu li:active {
+    background-color: #e2e2e2;
+}
+
+
+.about-wrapper {
+    height: 100%;
+    text-align: center;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Open Sans', sans-serif;
+}
+
+.about-wrapper:hover {
+    background-color: #F1F1F1;
+    cursor: pointer;
+}
+
+.about-wrapper > ul {
+    list-style-type: none;
+    padding: 0px;
+}
