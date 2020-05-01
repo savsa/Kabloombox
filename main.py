@@ -5,7 +5,6 @@ import kabloombox.api as api
 import kabloombox.config as config
 import kabloombox.views as views
 
-
 appengine.monkeypatch()
 
 config_sessions = {}

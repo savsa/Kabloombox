@@ -1,9 +1,14 @@
 $(document).ready(function() {
+    // let link = new URL(window.location.search);
+    // const urlParams = new URLSearchParams(link);
+    // url_id = urlParams.get('id');
+    // url_language = urlParamss.get('language');
+
     let params = new URLSearchParams(location.search);
     let url_id = params.get('id');
     let url_language = params.get('language');
-    let tracks = [];
     let track_uris = [];
+    let track_ids = [];
 
     var loadingScreen = pleaseWait({
          logo: "",
@@ -11,16 +16,26 @@ $(document).ready(function() {
          loadingHtml: '<img src="../images/boombox.png" id="boombox-loading" draggable="false" /><h3>Creating customized playlist...</h3><div class="spinner"><div class="rect1"></div><div class="rect2"></div><div class="rect3"></div><div class="rect4"></div><div class="rect5"></div></div>'
    });
     // TODO: send the access token to the post request intstead of getting it through the cookie?
-    const url = 'http://localhost:8080/start-analysis?playlist=' + url_id + '&language=' + url_language;
+    // const url = 'http://localhost:8080/start-analysis?playlist=' + url_id + '&language=' + url_language;
+    const url = 'http://localhost:8080/start-analysis';
     $.ajax({
         url: url,
         type: 'POST',
+        dataType: 'json',
+        contentType: 'application/json',
+        data: JSON.stringify({'playlist': url_id,'language': url_language}, function(k, v) {
+                return (v == null) ? "" : v;
+            }
+        ),
         success: function(results) {
-            let results_json = JSON.parse(results);
+            console.log(results);
+            let results_json = JSON.parse(JSON.stringify(results));
             tracks = results_json['tracks'];
+            tracks = tracks ? tracks : {};
             console.log(tracks);
 
-            for (let i = 0; i < tracks.length; i++) {
+
+            for (let i = 0; i < Object.keys(tracks).length; i++) {
                 let track = tracks[i];
 
                 let title = track['name'];
@@ -29,6 +44,7 @@ $(document).ready(function() {
                 let duration_ms = track['duration_ms'];
                 let uri = track['uri'];
                 duration_ms = parseInt(duration_ms);
+                track_ids.push(id);
 
                 let duration_m = Math.floor((duration_ms / 1000) / 60);
                 let duration_s = forceTwoDigits(Math.floor((duration_ms / 1000) % 60));
@@ -45,7 +61,22 @@ $(document).ready(function() {
 
             loadingScreen.finish();
         },
-        error: function(error) {
+        error: function(response, status, error) {
+            console.log(response.status);
+            switch(response.status){
+                case 401:
+                    console.log('401401');
+                    var cookies = document.cookie.split(";");
+                    for (var i = 0; i < cookies.length; i++) {
+                        eraseCookie(cookies[i].split("=")[0]);
+                    }
+                    break
+                case 404:
+                    window.location.replace('/error');
+                default:
+                    break
+            }
+
             // TODO: FIX
             loadingScreen.finish();
             // window.location.href = '/';

@@ -2,7 +2,7 @@ import base64
 import requests
 
 import const
-from models import Token
+import models
 
 def get_token(code):
     """Get a valid access and refresh token from a code."""
@@ -15,7 +15,7 @@ def get_token(code):
     response = requests.post(const.SPOTIFY_TOKEN_URL, data=payload, headers=headers)
     token_json = response.json()
     try:
-        token = Token(token_json['access_token'], token_json['refresh_token'])
+        token = models.Token(token_json['access_token'], token_json['refresh_token'])
         return token
     except KeyError:
         print('NO TOKEN COULD BE GOTTEN')
@@ -31,9 +31,8 @@ def get_access_from_refresh_token(refresh_token):
     response_json = response.json()
     try:
         access_token = response_json['access_token']
-        print("AT: ", access_token)
         return access_token
     except KeyError:
-        logout(session)
-        raise Exception('REFRESH TOKEN BAD')
+        # logout(session)
+        # raise Exception('REFRESH TOKEN BAD')
         return None

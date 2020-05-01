@@ -73,7 +73,8 @@ def create_tracks_from_audio_analysis(language, access_token):
                 instrumentalness=features['instrumentalness'],
                 liveness=features['liveness'],
                 valence=features['valence'],
-                mode=features['mode'])
+                mode=features['mode'],
+                speechiness=features['speechiness'])
             tracks.append(track)
             # add tracks in bulk as to not get Error 429: too many requests
             if len(tracks) >= 100:

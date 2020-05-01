@@ -5,8 +5,9 @@ from base_handler import BaseHandler
 from webapp2_extras import sessions
 
 import auth
-import interactions as actions
 import const
+import helper_funcs as help
+import interactions as actions
 import scrape
 
 env = jinja2.Environment(
@@ -20,16 +21,30 @@ class HomeAndLoginPage(BaseHandler):
             code = self.session['code']
         except KeyError:
             code = ''
-        template_vars = { 'code' : code }
+
+        template_vars = {}
 
         access_token = self.session.get('access_token')
         refresh_token = self.session.get('refresh_token')
         if access_token:
             # user is already logged in and has an access token
-            profile_info = actions.get_account_info(access_token, self.session)
-            template_vars['profile_photo'] = actions.get_profile_photo_url(profile_info)
-            template_vars['profile_name'] = actions.get_profile_name(profile_info)
-            template_vars['playlists_json'] = actions.get_users_playlists(access_token, self.session)
+            profile_json = actions.get_account_info(access_token, self.session)
+            if help.is_auth_error(profile_json):
+                self.session.clear()
+                self.redirect('/')
+            elif help.is_client_error(profile_json):
+                self.redirect('/error')
+
+            playlists_json = actions.get_users_playlists(access_token, self.session)
+            if help.is_auth_error(playlists_json):
+                self.session.clear()
+                self.redirect('/')
+            elif help.is_client_error(playlists_json):
+                self.redirect('/error')
+
+            template_vars['profile_photo'] = actions.get_profile_photo_url(profile_json)
+            template_vars['profile_name'] = actions.get_profile_name(profile_json)
+            template_vars['playlists_json'] = playlists_json
             template_vars['access_token'] = access_token
         elif code:
             # user isn't logged in yet. get the neccessary tokens and store
@@ -38,14 +53,31 @@ class HomeAndLoginPage(BaseHandler):
             if token:
                 access_token = token.access_token
                 refresh_token = token.refresh_token
-
                 self.session['access_token'] = access_token
                 self.session['refresh_token'] = refresh_token
-                profile_info = actions.get_account_info(access_token, self.session)
-                template_vars['profile_photo'] = actions.get_profile_photo_url(profile_info)
-                template_vars['profile_name'] = actions.get_profile_name(profile_info)
-                template_vars['playlists_json'] = actions.get_users_playlists(access_token, self.session)
-                template_vars['access_token'] = access_token
+
+                profile_json = actions.get_account_info(access_token, self.session)
+                if help.is_auth_error(profile_json):
+                    self.session.clear()
+                    self.redirect('/')
+                elif help.is_client_error(profile_json):
+                    self.redirect('/error')
+
+                playlists_json = actions.get_users_playlists(access_token, self.session)
+                if help.is_auth_error(playlists_json):
+                    self.session.clear()
+                    self.redirect('/')
+                elif help.is_client_error(playlists_json):
+                    self.redirect('/error')
+
+                template_vars['profile_photo'] = actions.get_profile_photo_url(profile_json)
+                template_vars['profile_name'] = actions.get_profile_name(profile_json)
+                template_vars['playlists_json'] = playlists_json
+                template_vars['access_token'] = token.access_token
+            else:
+                print('COULDN\'T GET ACCESS TOKEN FROM CODE')
+                self.session.clear()
+                self.redirect('/error')
 
         template = env.get_template('templates/homeAndLoginPage.html')
         self.response.write(template.render(template_vars))
@@ -83,9 +115,6 @@ class Scrape(BaseHandler):
     def post(self):
         language = self.request.get('language')
         code = self.session['code']
-
-        print('CODE GLOBAL:', code)
-        assert code
         if code:
             token = auth.get_token(code)
             print('TOKEN:', token)
