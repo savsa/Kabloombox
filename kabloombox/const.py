@@ -9,7 +9,7 @@ SPOTIFY_URL = 'open.spotify.com/user/'
 REDIRECT_URI = 'http://localhost:8080/redirect'
 # REDIRECT_URI = 'https://kabloombox-219016.appspot.com/redirect'
 
-SCOPE = 'user-library-read user-read-private user-read-email playlist-read-private user-modify-playback-state'
+SCOPE = 'user-library-read user-read-private user-read-email playlist-read-private user-modify-playback-state playlist-modify-public playlist-modify-private'
 
 # Client Keys
 CLIENT_ID_SPOTIFY = config.CLIENT_ID_SPOTIFY

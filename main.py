@@ -26,4 +26,5 @@ app = webapp2.WSGIApplication([
     ('/start-analysis', api.StartAnalysis),
     ('/logout', api.Logout),
     ('/play', api.Play),
+    ('/create', api.Create),
 ], debug=True, config=config_sessions)

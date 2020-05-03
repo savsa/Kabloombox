@@ -20,7 +20,7 @@ def get_playlists_track_ids(language, access_token):
             'fields': 'total,items(track(id))',
             'offset': 0,
         }
-        tracks_response = help.request_endpoint(playlists_tracks_endpoint, None, headers, params)
+        tracks_response = help.request_endpoint('GET', playlists_tracks_endpoint, None, headers, params)
         tracks_json = tracks_response.json()
 
         # Spotify limits to only 100 songs per request, so set starting location
@@ -28,7 +28,7 @@ def get_playlists_track_ids(language, access_token):
         if len(tracks_json) > 1: # if valid playlist URL
             for i in range((tracks_json['total'] / 100) + 1):
                 try:
-                    tracks_response = help.request_endpoint(playlists_tracks_endpoint, None, headers, params)
+                    tracks_response = help.request_endpoint('GET', playlists_tracks_endpoint, None, headers, params)
                     tracks_json = tracks_response.json()
                     for element in tracks_json['items']:
                         track_ids_datastore = models.TrackID.query().filter(models.TrackID.value == element['track']['id']).get()
@@ -58,7 +58,7 @@ def create_tracks_from_audio_analysis(language, access_token):
         id = track_id.value
         spotify_audio_features_endpoint = 'http://api.spotify.com/v1/audio-features/{}'.format(id)
         headers = { 'Authorization' : 'Bearer ' + access_token }
-        features_response = help.request_endpoint(spotify_audio_features_endpoint, None, headers)
+        features_response = help.request_endpoint('GET', spotify_audio_features_endpoint, None, headers)
         features = features_response.json()
         if features:
             print('making track')

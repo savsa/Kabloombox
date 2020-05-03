@@ -1,5 +1,7 @@
 import json
 
+import requests
+
 import auth
 import const
 import helper_funcs as help
@@ -13,7 +15,7 @@ def get_playlists_audio_features(access_token, playlist_id, session):
         'fields' : 'total,items(track(id))',
         'offset' : 0,
     }
-    tracks_response = help.request_endpoint(playlists_tracks_endpoint, session, headers, params)
+    tracks_response = help.request_endpoint('GET', playlists_tracks_endpoint, session, headers, params)
     tracks_json = tracks_response.json()
     if not tracks_response:
         return tracks_json
@@ -24,7 +26,7 @@ def get_playlists_audio_features(access_token, playlist_id, session):
     tracks_features_endpoint = 'https://api.spotify.com/v1/audio-features'
     headers = { 'Authorization' : 'Bearer ' + access_token }
     params = { 'ids' : track_ids_string }
-    features_response = help.request_endpoint(tracks_features_endpoint, session, headers, params)
+    features_response = help.request_endpoint('GET', tracks_features_endpoint, session, headers, params)
     features_json = features_response.json()
     return features_json
 
@@ -36,7 +38,7 @@ def get_tracks_stats(access_token, track_ids, session):
 
     headers = { 'Authorization' : 'Bearer ' + access_token }
     params = { 'ids' : track_ids_string }
-    tracks_stats_response = help.request_endpoint(tracks_stats_endpoint, session, headers, params)
+    tracks_stats_response = help.request_endpoint('GET', tracks_stats_endpoint, session, headers, params)
     tracks_stats_json = tracks_stats_response.json()
     return tracks_stats_json
 
@@ -45,7 +47,7 @@ def get_users_playlists(access_token, session):
     playlists_endpoint = 'https://api.spotify.com/v1/me/playlists'
     headers = { 'Authorization' : 'Bearer ' + access_token }
     params = { 'offset' : 0 }
-    playlists_response = help.request_endpoint(playlists_endpoint, session, headers, params)
+    playlists_response = help.request_endpoint('GET', playlists_endpoint, session, headers, params)
     playlists_json = playlists_response.json()
     return playlists_json['items']
 
@@ -53,7 +55,7 @@ def get_account_info(access_token, session):
     """Get the current user's account id"""
     user_account_endpoint = 'https://api.spotify.com/v1/me'
     headers = { 'Authorization' : 'Bearer ' + access_token }
-    user_account_response = help.request_endpoint(user_account_endpoint, session, headers)
+    user_account_response = help.request_endpoint('GET', user_account_endpoint, session, headers)
     if not user_account_response:
         return None
     user_account_json = user_account_response.json()
@@ -84,32 +86,51 @@ def get_profile_name(profile_info):
     name = (name[:15] + '...') if len(name) > 18 else name
     return name
 
-def create_playlist(user_id):
+def create_playlist(access_token, user_id, session):
     playlist_endpoint = 'https://api.spotify.com/v1/users/{}/playlists'.format(user_id)
+    print(playlist_endpoint)
     headers = {
-        'Authorization' : 'Basic ' + base64.b64encode(const.CLIENT_ID_SPOTIFY + ':' + const.CLIENT_SECRET_SPOTIFY),
+        'Authorization' : 'Bearer ' + access_token,
         'Content-Type' : 'application/json',
     }
     params = {
         'name' : 'Blah',
         'public' : True,
-        'description' : 'description',
     }
-    response = requests.post(headers=headers, data=params)
-    # if response.status_code == 200 or response.status_code == 201:
-    if response.status_code == requests.codes.ok:
-        response_json = response.json()
-        return response_json['id']
+    response = help.request_endpoint('POST', playlist_endpoint, session, headers, json_params=params)
+    # response = requests.post(playlist_endpoint, headers=headers, json=params)
+    return response.json()
 
-def add_tracks_to_playlist(playlist_id):
+
+
+
+def add_tracks_to_playlist(access_token, playlist_id, track_uris, session):
     playlist_endpoint = 'https://api.spotify.com/v1/playlists/{}/tracks'.format(playlist_id)
     headers = {
-        'Authorization' : 'Basic ' + base64.b64encode(const.CLIENT_ID_SPOTIFY + ':' + const.CLIENT_SECRET_SPOTIFY),
+        'Authorization' : 'Bearer ' + access_token,
         'Content-Type' : 'application/json',
     }
-    params = {
+    params = { 'uris': track_uris }
+    response = help.request_endpoint('POST', playlist_endpoint, session, headers, params)
+    return response.json()
 
-    }
+
+def filter_stats(tracks):
+    # print(tracks)
+    filters = ['name', 'id', 'duration_ms', 'uri']
+    filtered_list = []
+    try:
+        for track in tracks['tracks']:
+            filtered = { k: track[k] for k in filters}
+            filtered['artists'] = track['artists'][0]['name']
+            filtered_list.append(filtered)
+    except KeyError:
+        return tracks
+    except IndexError:
+        return tracks
+
+    return filtered_list
+
 
 def logout(session):
     session.clear()

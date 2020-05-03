@@ -1,15 +1,17 @@
 import requests
+import json
 
 import auth
 
-def request_endpoint(endpoint, session, headers, params={}):
-    """Make GET request to the endpoint. Check for expired access_token."""
-    response = requests.get(endpoint, headers=headers, params=params)
-    print('status code: ', response.status_code)
-
+def request_endpoint(method, endpoint, session, headers, params={}, json_params={}):
+    """Make a GET or POST request to the endpoint. Check for expired access token
+    and refresh it if neccessary. The default method is GET.
+    """
+    if method == 'POST':
+        response = requests.post(endpoint, headers=headers, params=params, json=json_params)
+    else:
+        response = requests.get(endpoint, headers=headers, params=params, json=json_params)
     if response.status_code == 401 and session:
-        # unauthorized. try getting another access token
-        print('inside')
         refresh_token = session.get('refresh_token')
         new_access_token = auth.get_access_from_refresh_token(refresh_token)
         if not new_access_token:
@@ -37,8 +39,23 @@ def is_auth_error(res_json):
 
 def is_client_error(res_json):
     try:
-        return res_json['error']['status'] != requests.codes.ok
+        status_code = res_json['error']['status']
+        return status_code != 200 and status_code != 201
     except KeyError:
         return False
     except TypeError:
         return False
+
+def check_error(res_json, response):
+    if is_auth_error(res_json):
+        response.status_int = 401
+        json_error = json.dumps({'error': 'Insufficient authentication.'})
+        response.write(json_error)
+        return True
+    elif is_client_error(res_json):
+        response.status_int = 404
+        json_error = json.dumps({'error': 'Not found.'})
+        response.write(json_error)
+        return True
+    return False
+

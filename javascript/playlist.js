@@ -17,29 +17,21 @@ $(document).ready(function() {
    });
     // TODO: send the access token to the post request intstead of getting it through the cookie?
     // const url = 'http://localhost:8080/start-analysis?playlist=' + url_id + '&language=' + url_language;
-    const url = 'http://localhost:8080/start-analysis';
     $.ajax({
-        url: url,
+        url: 'http://localhost:8080/start-analysis',
         type: 'POST',
         dataType: 'json',
         contentType: 'application/json',
-        data: JSON.stringify({'playlist': url_id,'language': url_language}, function(k, v) {
-                return (v == null) ? "" : v;
-            }
-        ),
-        success: function(results) {
-            console.log(results);
-            let results_json = JSON.parse(JSON.stringify(results));
-            tracks = results_json['tracks'];
+        data: JSON.stringify({'playlist': url_id,'language': url_language}),
+        success: function(response) {
+            let tracks = JSON.parse(JSON.stringify(response));
             tracks = tracks ? tracks : {};
             console.log(tracks);
 
-
             for (let i = 0; i < Object.keys(tracks).length; i++) {
                 let track = tracks[i];
-
                 let title = track['name'];
-                let artist = track['artists'][0]['name'];
+                let artist = track['artists']
                 let id = track['id'];
                 let duration_ms = track['duration_ms'];
                 let uri = track['uri'];
@@ -65,21 +57,22 @@ $(document).ready(function() {
             console.log(response.status);
             switch(response.status){
                 case 401:
-                    console.log('401401');
+                    console.log('401 Auth Error');
                     var cookies = document.cookie.split(";");
                     for (var i = 0; i < cookies.length; i++) {
                         eraseCookie(cookies[i].split("=")[0]);
                     }
-                    break
+                    break;
                 case 404:
-                    window.location.replace('/error');
+                    console.log('404 Error Not Found')
+                    // document.html = '<h1>HIHIHI</h1>'
+                    $('html').html('<h1>Sorry, couldn\'t find that playlist.</h1><br/><a href="/">Return home.</a>')
+                    // window.location.replace('/error');
+                    break;
                 default:
                     break
             }
-
-            // TODO: FIX
             loadingScreen.finish();
-            // window.location.href = '/';
         }
     });
 
@@ -130,8 +123,43 @@ $(document).ready(function() {
 
 
     $('.result-playlist-add-button').click(function () {
-        $.post('/create', function() {
-            location.reload(true);
+        $.ajax({
+            url: 'http://localhost:8080/create',
+            type: 'POST',
+            dataType: 'json',
+            contentType: 'application/json',
+            data: JSON.stringify({ 'uris': track_uris.toString() }),
+            // data: track_uris.toString(),
+            success: function(results) {
+                console.log('success');
+                console.log(results['message']);
+                loadingScreen.finish();
+            },
+            error: function(response, status, error) {
+                console.log(response.status);
+                console.log(error);
+
+                let json = JSON.parse(JSON.stringify(response));
+                console.log(json.responseText);
+
+                switch(response.status) {
+
+                    case 401:
+                        console.log('401 Auth Error');
+                        var cookies = document.cookie.split(";");
+                        for (var i = 0; i < cookies.length; i++) {
+                            eraseCookie(cookies[i].split("=")[0]);
+                        }
+                        break;
+                    case 404:
+                        // $('html').html('<h1>Sorry, couldn\'t create that playlist.</h1><br/><a href="/">Return home.</a>')
+                        // window.location.replace('/error');
+                        break;
+                    default:
+                        break
+                }
+                loadingScreen.finish();
+            }
         });
     });
 
