@@ -1,6 +1,4 @@
-runtime: python27
-api_version: 1
-threadsafe: true
+runtime: python37
 
 handlers:
 - url: /css
@@ -10,21 +8,7 @@ handlers:
 - url: /images
   static_dir: images
 - url: /.*
-  script: main.app
-
-libraries:
-- name: webapp2
-  version: latest
-- name: jinja2
-  version: latest
-- name: ssl
-  version: latest
-
-builtins:
-- deferred: on
+  script: auto
 
 error_handlers:
   - file: templates/error.html
-
-# env_variables:
-# - GAE_USE_SOCKETS_HTTPLIB : 'anyvalue'

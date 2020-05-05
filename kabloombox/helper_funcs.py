@@ -1,31 +1,30 @@
 import requests
 import json
 
-import auth
+from . import auth
 
-def request_endpoint(method, endpoint, session, headers, params={}, json_params={}):
+def request_endpoint(method, endpoint, headers, access_token, refresh_token,
+    params={}, json_params={}):
     """Make a GET or POST request to the endpoint. Check for expired access token
     and refresh it if neccessary. The default method is GET.
     """
     if method == 'POST':
-        response = requests.post(endpoint, headers=headers, params=params, json=json_params)
+        response = requests.post(
+            endpoint, headers=headers, params=params, json=json_params)
     else:
-        response = requests.get(endpoint, headers=headers, params=params, json=json_params)
-    if response.status_code == 401 and session:
-        refresh_token = session.get('refresh_token')
+        response = requests.get(
+            endpoint, headers=headers, params=params, json=json_params)
+    if response.status_code == 401:
         new_access_token = auth.get_access_from_refresh_token(refresh_token)
         if not new_access_token:
             return None
         print(new_access_token, refresh_token)
         headers = { 'Authorization' : 'Bearer ' + new_access_token }
-        response = requests.get(endpoint, headers=headers, params=params)
-        print(response.content)
-        if response:
-            session['access_token'] = new_access_token
-        else:
-            print('GETTING NEW ACCESS TOKEN DIDN\'T WORK')
-            return response
-    return response
+        response = requests.get(
+            endpoint, headers=headers, params=params, json=json_params)
+        if not response:
+            print('REQUEST ENDPOINT FAILED')
+    return response, access_token
 
 def is_auth_error(res_json):
     try:

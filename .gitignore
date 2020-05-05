@@ -1,5 +1,6 @@
 .DS_Store
 *.pyc
-*.json
 kabloombox/config.py
 lib/praw/praw.ini
+venv/
+__pycache__/

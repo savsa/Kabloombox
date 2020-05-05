@@ -2,12 +2,15 @@ import requests
 import heapq
 import math
 import json
+from flask import Flask
 
-import const
-import helper_funcs as help
-import interactions as actions
-import models
-from base_handler import BaseHandler
+from . import const
+from . import helper_funcs as help
+from . import interactions as actions
+from . import models
+from . import db_settings
+
+
 
 def track_delta(track_features_dict, target_track_dict):
     # deltas = [abs(value - track_features_dict[key]) for key, value in target_track_dict.items()]
@@ -15,7 +18,9 @@ def track_delta(track_features_dict, target_track_dict):
     return math.sqrt(sum(deltas))
 
 def find_closest_matches(language, target_track_dict):
-    tracks_model = models.Track.query().filter(models.Track.language == language)
+    db = db_settings.get_db()
+    # tracks_model = models.Track.query().filter(models.Track.language == language)
+    track_model = db.collection('tracks').where('language', '==', language)
     tracks = [track.to_dict() for track in tracks_model]
     # print(tracks)
 
@@ -25,28 +30,28 @@ def find_closest_matches(language, target_track_dict):
     # print('CLOSEST MATCHES:', closest_matches)
     return track_match_ids
 
-class StartAnalysis(BaseHandler):
+@app.route('/start-analysis', methods=['POST'])
+def start_analysis():
     """POST request to the server to calculate the best possible matches for songs."""
-    def post(self):
-        access_token = self.session.get('access_token')
-        data = json.loads(self.request.body)
-        playlist = data['playlist']
-        language = data['language']
+    access_token = flask.session.get('access_token')
+    data = json.loads(self.request.body)
+    playlist = data['playlist']
+    language = data['language']
 
-        self.response.headers['Content-Type'] = 'application/json'
-        if self.request.headers.get('Content_type') != 'application/json':
-            self.response.status_int = 400
-            json_error = json.dumps({'error': 'Data must be JSON.'})
-            self.response.write(json_error)
-            return
-        if not playlist or not language in const.subreddits.keys():
-            self.response.status_int = 400
-            json_error = json.dumps({'error': 'Bad request.'})
-            self.response.write(json_error)
-            return
-        if not access_token:
-            # ???
-            pass
+    self.response.headers['Content-Type'] = 'application/json'
+    if self.request.headers.get('Content_type') != 'application/json':
+        self.response.status_int = 400
+        json_error = json.dumps({'error': 'Data must be JSON.'})
+        self.response.write(json_error)
+        return
+    if not playlist or not language in const.subreddits.keys():
+        self.response.status_int = 400
+        json_error = json.dumps({'error': 'Bad request.'})
+        self.response.write(json_error)
+        return
+    if not access_token:
+        # ???
+        pass
 
 
         audio_features_json = actions.get_playlists_audio_features(access_token, playlist, self.session)
@@ -93,28 +98,34 @@ class StartAnalysis(BaseHandler):
         match_ids = find_closest_matches(language, target_track_dict)
         tracks_stats = actions.get_tracks_stats(access_token, match_ids, self.session)
         if help.is_auth_error(tracks_stats):
-            response.status_int = 401
+            self.response.status_int = 401
             json_error = json.dumps({'error': 'Insufficient authentication.'})
-            response.write(json_error)
+            self.response.write(json_error)
         elif help.is_client_error(tracks_stats):
-            response.status_int = 404
+            self.response.status_int = 404
             json_error = json.dumps({'error': 'Couldn\'t get tracks stats'})
-            response.write(json_error)
+            self.response.write(json_error)
         filtered_stats = actions.filter_stats(tracks_stats)
         self.response.status_int = 200
         self.response.write(json.dumps(filtered_stats))
 
+
+@app.route('/logout', methods=['GET'])
 class Logout(BaseHandler):
     """Logout and clear the session"""
     def get(self):
-        if self.session:
-            actions.logout(self.session)
+        if flask.session:
+            actions.logout(flask.session)
         self.redirect('/')
 
-class Play(BaseHandler):
+@app.route('/play', methods=['POST'])
+def play():
     def post(self):
-        uri = self.request.get('uri')
-        access_token = self.session.get('access_token')
+        data = flask.request.json
+        uri = data['uri']
+        # uri = self.request.get('uri')
+        access_token = flask.session.get('access_token')
+        access_token = flask.session.get('access_token')
 
         play_endpoint = 'http://api.spotify.com/v1/me/player/play'
         headers = { 'Authorization' : 'Bearer ' + access_token }
@@ -124,62 +135,51 @@ class Play(BaseHandler):
         if response.status_code != 204:
             print(response.text)
 
-class Create(BaseHandler):
+@app.route('/create', methods=['POST'])
+def create():
     """Create a new playlist."""
-    def post(self):
-        data = json.loads(self.request.body)
-        uris = data['uris']
-        access_token = self.session.get('access_token')
+    data = flask.request.json
+    uris = data['uris']
+    access_token = flask.session.get('access_token')
 
-        print(uris)
+    self.response.headers['Content-Type'] = 'application/json'
+    if self.request.headers.get('Content_type') != 'application/json':
+        self.response.status_int = 400
+        json_error = json.dumps({'error': 'Data must be JSON.'})
+        self.response.write(json_error)
+    if not uris:
+        self.response.status_int = 400
+        json_error = json.dumps({'error': 'Bad request.'})
+        self.response.write(json_error)
+    if not access_token:
+        # ???
+        pass
 
-        print('aaa')
-        self.response.headers['Content-Type'] = 'application/json'
-        if self.request.headers.get('Content_type') != 'application/json':
-            self.response.status_int = 400
-            json_error = json.dumps({'error': 'Data must be JSON.'})
-            self.response.write(json_error)
-        if not uris:
-            self.response.status_int = 400
-            json_error = json.dumps({'error': 'Bad request.'})
-            self.response.write(json_error)
-        if not access_token:
-            # ???
-            pass
-        print('bbb')
+    user_id = actions.get_account_info(access_token, self.session)['id']
+    new_playlist_json = actions.create_playlist(access_token, user_id, self.session)
+    if help.is_auth_error(new_playlist_json):
+        self.response.status_int = 401
+        json_error = json.dumps({'error': 'Insufficient authentication.'})
+        self.response.write(json_error)
+        return
+    elif help.is_client_error(new_playlist_json):
+        self.response.status_int = 404
+        json_error = json.dumps({'error': 'Couldn\'t create playlist.'})
+        self.response.write(json_error)
+        return
+    new_playlist_id = new_playlist_json['id']
 
-        user_id = actions.get_account_info(access_token, self.session)['id']
-        print(user_id)
-        new_playlist_json = actions.create_playlist(access_token, user_id, self.session)
-        print("playlist json", new_playlist_json)
-        if help.is_auth_error(new_playlist_json):
-            self.response.status_int = 401
-            json_error = json.dumps({'error': 'Insufficient authentication.'})
-            self.response.write(json_error)
-            return
-        elif help.is_client_error(new_playlist_json):
-            self.response.status_int = 404
-            json_error = json.dumps({'error': 'Couldn\'t create playlist.'})
-            self.response.write(json_error)
-            return
-        new_playlist_id = new_playlist_json['id']
+    add_tracks_json = actions.add_tracks_to_playlist(access_token, new_playlist_id, uris, self.session)
+    if help.is_auth_error(add_tracks_json):
+        self.response.status_int = 401
+        json_error = json.dumps({'error': 'Insufficient authentication.'})
+        self.response.write(json_error)
+        return
+    elif help.is_client_error(add_tracks_json):
+        self.response.status_int = 404
+        json_error = json.dumps({'error': 'Couldn\'t add tracks to playlist.'})
+        self.response.write(json_error)
+        return
 
-        print('ccc')
-
-        add_tracks_json = actions.add_tracks_to_playlist(access_token, new_playlist_id, uris, self.session)
-        if help.is_auth_error(add_tracks_json):
-            self.response.status_int = 401
-            json_error = json.dumps({'error': 'Insufficient authentication.'})
-            self.response.write(json_error)
-            return
-        elif help.is_client_error(add_tracks_json):
-            self.response.status_int = 404
-            json_error = json.dumps({'error': 'Couldn\'t add tracks to playlist.'})
-            self.response.write(json_error)
-            return
-        print(add_tracks_json)
-
-        print('ddd')
-
-        self.response.status_int = 200
-        self.response.write(json.dumps({ 'message': 'Successfully created playlist and added tracks.' }))
+    self.response.status_int = 200
+    self.response.write(json.dumps({ 'message': 'Successfully created playlist and added tracks.' }))

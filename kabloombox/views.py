@@ -1,136 +1,171 @@
-import jinja2
-import os
-import webapp2
-from base_handler import BaseHandler
-from webapp2_extras import sessions
+# import auth
+from . import auth
+from . import const
+from . import helper_funcs as help
+from . import interactions as actions
+from . import scrape
 
-import auth
-import const
-import helper_funcs as help
-import interactions as actions
-import scrape
+import datetime
+import flask
+from flask.ext.session import Session
 
-env = jinja2.Environment(
-    loader=jinja2.FileSystemLoader(os.path.join(os.path.dirname(__file__), '..')),
-    extensions=['jinja2.ext.autoescape'],
-    autoescape=True)
 
-class HomeAndLoginPage(BaseHandler):
-    def get(self):
-        try:
-            code = self.session['code']
-        except KeyError:
-            code = ''
+SESSION_TYPE = 'redis'
+app.config.from_object(__name__)
+Session(app)
 
-        template_vars = {}
+@app.route('/', methods=['GET'])
+def home_and_login():
+    try:
+        code = flask.session['code']
+    except KeyError:
+        code = ''
 
-        access_token = self.session.get('access_token')
-        refresh_token = self.session.get('refresh_token')
-        if access_token:
-            # user is already logged in and has an access token
-            profile_json = actions.get_account_info(access_token, self.session)
+    access_token = flask.request.cookies.get('access_token')
+    refresh_token = flask.request.cookies.get('refresh_token')
+    response = requests.get_account_info(access_token, refresh_token)
+
+    if not response: # TODO:
+        # user is already logged in and has an access token
+        profile_json, access_token = actions.get_account_info(
+            access_token, refresh_token)
+        if help.is_auth_error(profile_json):
+            # flask.session.clear()
+            flask.redirect(flask.url_for('/'))
+        elif help.is_client_error(profile_json):
+            flask.redirect(flask.url_for('/error'))
+
+        playlists_json, access_token = actions.get_users_playlists(
+            access_token, refresh_token)
+        if help.is_auth_error(playlists_json):
+            flask.session.clear()
+            flask.redirect(flask.url_for('/'))
+        elif help.is_client_error(playlists_json):
+            flask.redirect(flask.url_for('/error'))
+
+        profile_photo = actions.get_profile_photo_url(profile_json)
+        profile_name = actions.get_profile_name(profile_json)
+        return flask.render_template(
+            'homeAndLoginPage.html',
+            profile_photo=profile_photo,
+            profile_name=profile_name,
+            playlists_json=playlists_json,
+            access_token=access_token)
+    elif code:
+        # user isn't logged in yet. get the neccessary tokens and store
+        # them in the session
+        access_token, refresh_token = auth.get_tokens(code)
+        if access_token and refresh_token:
+            profile_json, access_token = actions.get_account_info(access_token)
             if help.is_auth_error(profile_json):
-                self.session.clear()
-                self.redirect('/')
+                flask.session.clear()
+                flask.redirect(flask.url_for('/'))
             elif help.is_client_error(profile_json):
-                self.redirect('/error')
+                flask.redirect(flask.url_for('/error'))
 
-            playlists_json = actions.get_users_playlists(access_token, self.session)
+            playlists_json, access_token = actions.get_users_playlists(access_token)
             if help.is_auth_error(playlists_json):
-                self.session.clear()
-                self.redirect('/')
+                flask.session.clear()
+                flask.redirect(flask.url_for('/'))
             elif help.is_client_error(playlists_json):
-                self.redirect('/error')
+                flask.redirect(flask.url_for('/error'))
 
-            template_vars['profile_photo'] = actions.get_profile_photo_url(profile_json)
-            template_vars['profile_name'] = actions.get_profile_name(profile_json)
-            template_vars['playlists_json'] = playlists_json
-            template_vars['access_token'] = access_token
-        elif code:
-            # user isn't logged in yet. get the neccessary tokens and store
-            # them in the session
-            token = auth.get_token(code)
-            if token:
-                access_token = token.access_token
-                refresh_token = token.refresh_token
-                self.session['access_token'] = access_token
-                self.session['refresh_token'] = refresh_token
+            render = flask.render_template('templates/homeAndLoginPage.html',
+                profile_photo=profile_photo,
+                profile_name=profile_name,
+                playlists_json=playlists_json,
+                access_token=access_token)
+            render.set_cookie(
+                key='access_token',
+                value=access_token,
+                max_age=3600,
+                expires=datetime.datetime.now() + datetime.timedelta(hours=1),
+                secure=True,
+                httponly=True,
+                samesite=True)
+            render.set_cookie(
+                key='refresh_token',
+                value=refresh_token,
+                max_age=100000,
+                expires=datetime.datetime.now() + datetime.timedelta(weeks=52),
+                secure=True,
+                httponly=True,
+                samesite=True)
+            return render
+        else:
+            print('COULDN\'T GET ACCESS TOKEN FROM CODE')
+            flask.session.clear()
+            flask.redirect(flask.url_for('/error'))
 
-                profile_json = actions.get_account_info(access_token, self.session)
-                if help.is_auth_error(profile_json):
-                    self.session.clear()
-                    self.redirect('/')
-                elif help.is_client_error(profile_json):
-                    self.redirect('/error')
+    return flask.render_template('templates/homeAndLoginPage.html')
 
-                playlists_json = actions.get_users_playlists(access_token, self.session)
-                if help.is_auth_error(playlists_json):
-                    self.session.clear()
-                    self.redirect('/')
-                elif help.is_client_error(playlists_json):
-                    self.redirect('/error')
+@app.route('/playlist', methods=['GET'])
+def playlist():
+    if flask.request.method == 'GET':
+        return flask.render_template('templates/playlist.html')
 
-                template_vars['profile_photo'] = actions.get_profile_photo_url(profile_json)
-                template_vars['profile_name'] = actions.get_profile_name(profile_json)
-                template_vars['playlists_json'] = playlists_json
-                template_vars['access_token'] = token.access_token
-            else:
-                print('COULDN\'T GET ACCESS TOKEN FROM CODE')
-                self.session.clear()
-                self.redirect('/error')
+@app.route('/about', methods=['GET'])
+def about():
+    if flask.request.method == 'GET':
+        return flask.render_template('templates/about.html')
 
-        template = env.get_template('templates/homeAndLoginPage.html')
-        self.response.write(template.render(template_vars))
-
-class Playlist(webapp2.RequestHandler):
-    def get(self):
-        template = env.get_template('templates/playlist.html')
-        self.response.write(template.render())
-
-class About(webapp2.RequestHandler):
-    def get(self):
-        template = env.get_template('templates/about.html')
-        self.response.write(template.render())
-
-class Error(webapp2.RequestHandler):
-    def get(self):
-        template = env.get_template('templates/error.html')
-        self.response.write(template.render())
+@app.route('/error', methods=['GET'])
+def error():
+    if flask.request.method == 'GET':
+        return flask.render_template('templates/error.html')
 
 ###################
 
-class Login(webapp2.RequestHandler):
-    def get(self):
+@app.route('/login', methods=['GET'])
+def login():
+    if flask.request.method == 'GET':
         url = '{}?client_id={}' \
                 '&response_type=code' \
                 '&redirect_uri={}' \
                 '&scope={}'.format(const.SPOTIFY_AUTH_URL, const.CLIENT_ID_SPOTIFY, const.REDIRECT_URI, const.SCOPE)
         self.redirect(url)
 
-class Scrape(BaseHandler):
-    def get(self):
+@app.route('/scrape', methods=['GET', 'POST'])
+def scrape():
+    if flask.request.method == 'GET':
         template = env.get_template('templates/search.html')
         self.response.write(template.render())
 
-    def post(self):
-        language = self.request.get('language')
-        code = self.session['code']
+    if flask.request.method == 'POST':
+        language = flask.request.args.get('language')
+        code = flask.session['code']
         if code:
             token = auth.get_token(code)
             print('TOKEN:', token)
             assert token
             if token:
-                self.session['access_token'] = token.access_token
-                self.session['refresh_token'] = token.refresh_token
+                flask.session['access_token'] = token.access_token
+                flask.session['refresh_token'] = token.refresh_token
                 scrape.scan_subreddit(language, token.access_token)
 
-class Redirect(BaseHandler):
-    """Gets the code after getting redirected from the Spotify login page"""
-    def get(self):
-        code = self.request.get('code')
+@app.route('/redirect', methods=['GET'])
+def redirect():
+    '''Gets the code after getting redirected from the Spotify login page'''
+    if flask.request.method == 'GET':
+        code = flask.request.args.get('code')
         if not code:
             print('----COULD NOT GET CODE----')
-            self.redirect('/error')
-        self.session['code'] = code
-        self.redirect('/')
-        # self.redirect('/scrape')
+            flask.redirect(flask.url_for('/error'))
+        flask.session['code'] = code
+        flask.redirect(flask.url_for('/'))
+        # flask.redirect(flask.url_for('/scrape')
+
+
+
+@app.errorhandler(404)
+def not_found(error):
+    return flask.render_template('error.html'), 404
+
+
+# @app.errorhandler(InternalServerError)
+# def handle_500(e):
+#     original = getattr(e, "original_exception", None)
+#     if original is None:
+#         return render_template("500.html"), 500
+#     # wrapped unhandled error
+#     return render_template("500_unhandled.html", e=original), 500

@@ -1,65 +1,74 @@
 import json
-
 import requests
 
-import auth
-import const
-import helper_funcs as help
+from . import auth
+from . import const
+from . import helper_funcs as help
 
-def get_playlists_audio_features(access_token, playlist_id, session):
+def get_playlists_audio_features(access_token, refresh_token, playlist_id):
     """Get the playlist's audio features for each track."""
     # get playlist's track ids
-    playlists_tracks_endpoint = 'http://api.spotify.com/v1/playlists/{}/tracks'.format(playlist_id)
+    endpoint = 'http://api.spotify.com/v1/playlists/{}/tracks'.format(playlist_id)
     headers = { 'Authorization' : 'Bearer ' + access_token }
     params = {
         'fields' : 'total,items(track(id))',
         'offset' : 0,
     }
-    tracks_response = help.request_endpoint('GET', playlists_tracks_endpoint, session, headers, params)
-    tracks_json = tracks_response.json()
-    if not tracks_response:
-        return tracks_json
+    response, access_token = help.request_endpoint(
+        method='GET', endpoint=endpoint, headers=headers, params=params,
+        access_token=access_token, refresh_token=refresh_token)
+    tracks_json = response.json()
+    if not response:
+        return tracks_json, access_token
     track_ids = [track['track']['id'] for track in tracks_json['items'] if track['track']['id'] is not None]
     track_ids_string = ','.join(track_ids)
 
     # get audio features of each of the tracks
-    tracks_features_endpoint = 'https://api.spotify.com/v1/audio-features'
+    endpoint = 'https://api.spotify.com/v1/audio-features'
     headers = { 'Authorization' : 'Bearer ' + access_token }
     params = { 'ids' : track_ids_string }
-    features_response = help.request_endpoint('GET', tracks_features_endpoint, session, headers, params)
-    features_json = features_response.json()
-    return features_json
+    response, access_token = help.request_endpoint(
+        method='GET', endpoint=endpoint, headers=headers, params=params,
+        access_token=access_token, refresh_token=refresh_token)
+    features_json = response.json()
+    return features_json, access_token
 
-def get_tracks_stats(access_token, track_ids, session):
+def get_tracks_stats(access_token, refresh_token, track_ids):
     """Get the track's stats, including song title, artist, and length."""
-    tracks_stats_endpoint = 'https://api.spotify.com/v1/tracks'
+    endpoint = 'https://api.spotify.com/v1/tracks'
     track_ids = track_ids[:50]
     track_ids_string = ','.join(track_ids)
 
     headers = { 'Authorization' : 'Bearer ' + access_token }
     params = { 'ids' : track_ids_string }
-    tracks_stats_response = help.request_endpoint('GET', tracks_stats_endpoint, session, headers, params)
-    tracks_stats_json = tracks_stats_response.json()
-    return tracks_stats_json
+    response, access_token = help.request_endpoint(
+        method='GET', endpoint=endpoint, headers=headers, params=params,
+        access_token=access_token, refresh_token=refresh_token)
+    tracks_stats_json = response.json()
+    return tracks_stats_json, access_token
 
-def get_users_playlists(access_token, session):
+def get_users_playlists(access_token, refresh_token):
     """Get the current user's playlists to display them on the page."""
-    playlists_endpoint = 'https://api.spotify.com/v1/me/playlists'
+    endpoint = 'https://api.spotify.com/v1/me/playlists'
     headers = { 'Authorization' : 'Bearer ' + access_token }
     params = { 'offset' : 0 }
-    playlists_response = help.request_endpoint('GET', playlists_endpoint, session, headers, params)
-    playlists_json = playlists_response.json()
-    return playlists_json['items']
+    response, access_token = help.request_endpoint(
+        method='GET', endpoint=endpoint, headers=headers, params=params,
+        access_token=access_token, refresh_token=refresh_token)
+    playlists_json = response.json()
+    return playlists_json['items'], access_token
 
-def get_account_info(access_token, session):
+def get_account_info(access_token, refresh_token):
     """Get the current user's account id"""
-    user_account_endpoint = 'https://api.spotify.com/v1/me'
+    endpoint = 'https://api.spotify.com/v1/me'
     headers = { 'Authorization' : 'Bearer ' + access_token }
-    user_account_response = help.request_endpoint('GET', user_account_endpoint, session, headers)
-    if not user_account_response:
+    response, access_token = help.request_endpoint(method='GET',
+        endpoint=endpoint, headers=headers, access_token=access_token,
+        refresh_token=refresh_token)
+    if not response:
         return None
-    user_account_json = user_account_response.json()
-    return user_account_json
+    user_account_json = response.json()
+    return user_account_json, access_token
 
 def calculate_average(features_json, feature_type):
     """Average the specified audio feature of a playlist.
@@ -86,34 +95,34 @@ def get_profile_name(profile_info):
     name = (name[:15] + '...') if len(name) > 18 else name
     return name
 
-def create_playlist(access_token, user_id, session):
-    playlist_endpoint = 'https://api.spotify.com/v1/users/{}/playlists'.format(user_id)
+def create_playlist(access_token, refresh_token, user_id):
+    endpoint = 'https://api.spotify.com/v1/users/{}/playlists'.format(user_id)
     print(playlist_endpoint)
     headers = {
-        'Authorization' : 'Bearer ' + access_token,
+        'Authorization' : 'Bearer ' + access_token, refresh_token,
         'Content-Type' : 'application/json',
     }
     params = {
         'name' : 'Blah',
         'public' : True,
     }
-    response = help.request_endpoint('POST', playlist_endpoint, session, headers, json_params=params)
+    response, access_token = help.request_endpoint(
+        method='POST', endpoint=endpoint, headers=headers, json_params=params,
+        access_token=access_token, refresh_token=refresh_token)
     # response = requests.post(playlist_endpoint, headers=headers, json=params)
     return response.json()
 
-
-
-
-def add_tracks_to_playlist(access_token, playlist_id, track_uris, session):
-    playlist_endpoint = 'https://api.spotify.com/v1/playlists/{}/tracks'.format(playlist_id)
+def add_tracks_to_playlist(access_token, refresh_token, playlist_id, track_uris):
+    endpoint = 'https://api.spotify.com/v1/playlists/{}/tracks'.format(playlist_id)
     headers = {
-        'Authorization' : 'Bearer ' + access_token,
+        'Authorization' : 'Bearer ' + access_token, refresh_token,
         'Content-Type' : 'application/json',
     }
     params = { 'uris': track_uris }
-    response = help.request_endpoint('POST', playlist_endpoint, session, headers, params)
+    response, access_token = help.request_endpoint(
+        method='POST', endpoint=endpoint, headers=headers, params=params,
+        access_token=access_token, refresh_token=refresh_token)
     return response.json()
-
 
 def filter_stats(tracks):
     # print(tracks)
