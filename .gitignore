@@ -1,6 +1,7 @@
 .DS_Store
 *.pyc
 kabloombox/config.py
-lib/praw/praw.ini
+kabloombox/praw.ini
 venv/
 __pycache__/
+kabloombox-creds.json

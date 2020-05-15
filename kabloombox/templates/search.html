@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <title>Reddit Bot</title>
+
+  <style>
+  </style>
+</head>
+<body>
+
+
+<!-- <form action="/search" method="post"> -->
+
+<form id="scrape">
+  <p>Choose the language learning subreddit to scrape:</p>
+  <select name="language">
+      <option value="german">German</option>
+      <option value="french">French</option>
+      <option value="spanish">Spanish</option>
+      <option value="italian">Italian</option>
+      <option value="polish">Polish</option>
+      <option value="portuguese">Portuguese</option>
+      <option value="russian">Russian</option>
+      <option value="cantonese">Cantonese</option>
+      <option value="chinese">Chinese</option>
+      <option value="finish">Finnish</option>
+      <option value="japanese">Japanese</option>
+  </select>
+  <button type="Search">Search</button>
+</form>
+
+<br />
+<br />
+Delete all queries: <input id="delete" type="submit" />f
+
+
+
+
+
+</body>
+
+<script>
+$('#scrape').submit(function(e){
+    e.preventDefault();
+    $.ajax({
+        url:'/scrape',
+        type:'post',
+        data:$('form').serialize(),
+        success:function(){
+            console.log('finished scraping.')
+
+        }
+    });
+});
+
+
+$("#delete").click(function(e){
+    e.preventDefault();
+    $.ajax({
+        url:'/delete',
+        type:'post',
+        success:function(){
+            console.log('finished deleting.')
+        }
+    });
+});
+</script>
+</html>

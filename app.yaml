@@ -3,12 +3,16 @@ runtime: python37
 handlers:
 - url: /css
   static_dir: css
+  expiration: '1s'
 - url: /javascript
   static_dir: javascript
+  expiration: '1s'
 - url: /images
   static_dir: images
+  expiration: '1s'
 - url: /.*
   script: auto
 
-error_handlers:
-  - file: templates/error.html
+# error_handlers:
+#   - file: templates/error.html
+#     expiration: '1s'

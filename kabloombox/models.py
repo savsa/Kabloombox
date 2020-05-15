@@ -3,12 +3,14 @@ class TrackID(object):
         self.value = value
         self.language = language
 
+    def __repr__(self):
+        return f'TrackID(value={self.value}, language={self.language})'
+
     @staticmethod
     def from_dict(source):
         return TrackID(
-            value = source['value'],
-            language = source['language']
-        )
+            value=source['value'],
+            language=source['language'])
 
     def to_dict(self):
         return {
@@ -16,14 +18,14 @@ class TrackID(object):
             'language': self.language,
         }
 
-    def __repr__(self):
-        return f'TrackID(value={self.value}, language={self.language})'
-
 
 class PlaylistID(object):
     def __init__(self, value, language):
         self.value = value
         self.language = language
+
+    def __repr__(self):
+        return f'TrackID(value={self.value}, language={self.language})'
 
     @staticmethod
     def from_dict(source):
@@ -38,14 +40,12 @@ class PlaylistID(object):
             'language': self.language,
         }
 
-    def __repr__(self):
-        return f'TrackID(value={self.value}, language={self.language})'
-
 
 class Track(object):
-    def __init__(self, track_id, language, loudness, tempo, danceability,
-        energy, acousticness, instrumentalness, liveness, valence, mode,
-        speechiness):
+    def __init__(
+            self, track_id, language, loudness, tempo, danceability,
+            energy, acousticness, instrumentalness, liveness, valence, mode,
+            speechiness):
         self.track_id = track_id
         self.language = language
         self.loudness = loudness
@@ -58,6 +58,15 @@ class Track(object):
         self.valence = valence
         self.mode = mode
         self.speechiness = speechiness
+
+    def __repr__(self):
+        return (f'''Track(track_id={self.track_id}, language={self.language},
+            loudness={self.loudness}), tempo={self.tempo},
+            danceability={self.danceability}, energy={self.energy},
+            acousticness={self.acousticness},
+            instrumentalness={self.instrumentalness}, liveness={self.liveness},
+            valence={self.valence}, mode={self.mode},
+            speechiness={self.speechiness}''')
 
     @staticmethod
     def from_dict(source):
@@ -75,9 +84,10 @@ class Track(object):
             mode=source['mode'],
             speechiness=source['speechiness'])
 
-
     def to_dict(self):
         return {
+            'track_id': self.track_id,
+            'language': self.language,
             'loudness': self.loudness,
             'tempo': self.tempo,
             'danceability': self.danceability,
@@ -89,24 +99,3 @@ class Track(object):
             'mode': self.mode,
             'speechiness': self.speechiness,
         }
-
-    def __repr__(self):
-        return (f'''Track(loudness={self.loudness}), tempo={self.tempo},
-        danceability={self.danceability}, energy={self.energy},
-        acousticness={self.acousticness},
-        instrumentalness={self.instrumentalness}, liveness={self.liveness},
-        valence={self.valence}, mode={self.mode},
-        speechiness={self.speechiness}''')
-
-#
-# class TrackObj:
-#     def __init__(self, loudness, tempo, danceability, energy, acousticness, instrumentalness, liveness, valence, mode):
-#         self.loudness = loudness
-#         self.tempo = tempo
-#         self.danceability = danceability
-#         self.energy = energy
-#         self.acousticness = acousticness
-#         self.instrumentalness = instrumentalness
-#         self.liveness = liveness
-#         self.valence = valence
-#         self.mode = mode

@@ -2,184 +2,269 @@ import requests
 import heapq
 import math
 import json
-from flask import Flask
+import flask
+import logging
 
 from . import const
 from . import helper_funcs as help
 from . import interactions as actions
 from . import models
-from . import db_settings
-
+from . import app, db
 
 
 def track_delta(track_features_dict, target_track_dict):
-    # deltas = [abs(value - track_features_dict[key]) for key, value in target_track_dict.items()]
-    deltas = [math.pow(value - track_features_dict[key], 2) for key, value in target_track_dict.items()]
+    deltas = [math.pow(value - track_features_dict[key], 2)
+              for key, value in target_track_dict.items()]
     return math.sqrt(sum(deltas))
 
-def find_closest_matches(language, target_track_dict):
-    db = db_settings.get_db()
-    # tracks_model = models.Track.query().filter(models.Track.language == language)
-    track_model = db.collection('tracks').where('language', '==', language)
-    tracks = [track.to_dict() for track in tracks_model]
-    # print(tracks)
 
-    closest_matches = heapq.nsmallest(10, tracks, key=lambda track_features_dict: track_delta(track_features_dict, target_track_dict))
-    track_match_ids = [closest_match['track_id'] for closest_match in closest_matches]
-    # print(track_match_ids)
-    # print('CLOSEST MATCHES:', closest_matches)
+def find_closest_matches(language, target_dict):
+    track_model = db.collection('tracks').where(
+        'language', '==', language).stream()
+    # track_model = db.collection('tracks').stream()
+    tracks = [track.to_dict() for track in track_model]
+    logging.debug(tracks)
+
+    closest_matches = heapq.nsmallest(
+        10,
+        tracks,
+        key=lambda features_dict: track_delta(features_dict, target_dict))
+    # for c in closest_matches:
+    #     logging.debug(c)
+    track_match_ids = [closest_match['track_id']
+                       for closest_match in closest_matches]
+    # logging.debug(track_match_ids)
+    # logging.debug('CLOSEST MATCHES:', closest_matches)
     return track_match_ids
+
 
 @app.route('/start-analysis', methods=['POST'])
 def start_analysis():
-    """POST request to the server to calculate the best possible matches for songs."""
-    access_token = flask.session.get('access_token')
-    data = json.loads(self.request.body)
+    """Calculate the best possible matches to the user's playlist.
+    """
+    if not flask.request.is_json:
+        return flask.jsonify({
+            'error': {
+                'message': 'Data must be JSON.',
+                'status': 400,
+            }
+        }), 400
+    # if not flask.request.is_secure:
+    #     return flask.jsonify({
+    #         'error': {
+    #             'message': 'Unsecure request.',
+    #             'status': 400,
+    #         }
+    #     }), 400
+    # logging.info('ORIGIN: ' + flask.request.origin)
+    data = flask.request.get_json()
     playlist = data['playlist']
     language = data['language']
+    access_token = flask.request.cookies.get('access_token')
+    refresh_token = flask.request.cookies.get('refresh_token')
 
-    self.response.headers['Content-Type'] = 'application/json'
-    if self.request.headers.get('Content_type') != 'application/json':
-        self.response.status_int = 400
-        json_error = json.dumps({'error': 'Data must be JSON.'})
-        self.response.write(json_error)
-        return
-    if not playlist or not language in const.subreddits.keys():
-        self.response.status_int = 400
-        json_error = json.dumps({'error': 'Bad request.'})
-        self.response.write(json_error)
-        return
-    if not access_token:
-        # ???
-        pass
+    if not access_token or not refresh_token:
+        return flask.jsonify({
+            'error': {
+                'message': 'Insufficient authentication.',
+                'status': 401,
+            }
+        }), 401
 
+    if not playlist or language not in const.subreddits.keys():
+        return flask.jsonify({
+            'error': {
+                'message': 'Bad request.',
+                'status': 400,
+            }
+        }), 400
 
-        audio_features_json = actions.get_playlists_audio_features(access_token, playlist, self.session)
-        if help.check_error(audio_features_json, self.response):
-            return
-        # if help.is_auth_error(audio_features_json):
-        #     self.response.status_int = 401
-        #     json_error = json.dumps({'error': 'Insufficient authentication.'})
-        #     self.response.write(json_error)
-        #     return
-        # elif help.is_client_error(audio_features_json):
-        #     self.response.status_int = 404
-        #     json_error = json.dumps({'error': 'Not found.'})
-        #     self.response.write(json_error)
-        #     return
+    features_json, access_token = actions.get_playlists_audio_features(
+        access_token, refresh_token, playlist)
+    if help.is_auth_error(features_json):
+        return flask.jsonify({
+            'error': {
+                'message': 'Insufficient authentication.',
+                'status': 401,
+            }
+        }), 401
+    elif help.is_client_error(features_json):
+        logging.error('CLIENT ERROR')
+        return flask.jsonify({
+            'error': {
+                'message': 'Not found.',
+                'status': 404,
+            }
+        }), 404
 
-        avg_energy = actions.calculate_average(audio_features_json, 'energy')
-        avg_tempo = actions.calculate_average(audio_features_json, 'tempo')
-        avg_danceability = actions.calculate_average(audio_features_json, 'danceability')
-        avg_acousticness = actions.calculate_average(audio_features_json, 'acousticness')
-        avg_instrumentalness = actions.calculate_average(audio_features_json, 'instrumentalness')
-        avg_liveness = actions.calculate_average(audio_features_json, 'liveness')
-        avg_loudness = actions.calculate_average(audio_features_json, 'loudness')
-        avg_valence = actions.calculate_average(audio_features_json, 'valence')
-        avg_mode = actions.calculate_average(audio_features_json, 'mode')
-        # avg_speechiness = actions.calculate_average(audio_features_json, 'speechiness')
+    avg_energy = actions.calc_avg(features_json, 'energy')
+    avg_tempo = actions.calc_avg(features_json, 'tempo')
+    avg_danceability = actions.calc_avg(features_json, 'danceability')
+    avg_acousticness = actions.calc_avg(features_json, 'acousticness')
+    avg_instrumentalness = actions.calc_avg(features_json, 'instrumentalness')
+    avg_liveness = actions.calc_avg(features_json, 'liveness')
+    avg_loudness = actions.calc_avg(features_json, 'loudness')
+    avg_valence = actions.calc_avg(features_json, 'valence')
+    avg_mode = actions.calc_avg(features_json, 'mode')
+    avg_speechiness = actions.calc_avg(features_json, 'speechiness')
 
-        target_track_dict = {
-            'loudness': avg_loudness,
-            'tempo': avg_tempo,
-            'danceability': avg_danceability,
-            'energy': avg_energy,
-            'acousticness': avg_acousticness,
-            'instrumentalness': avg_instrumentalness,
-            'liveness': avg_liveness,
-            'valence': avg_valence,
-            'mode': avg_mode,
-            # 'speechiness': avg_speechiness
-        }
+    target_track_dict = {
+        'loudness': avg_loudness,
+        'tempo': avg_tempo,
+        'danceability': avg_danceability,
+        'energy': avg_energy,
+        'acousticness': avg_acousticness,
+        'instrumentalness': avg_instrumentalness,
+        'liveness': avg_liveness,
+        'valence': avg_valence,
+        'mode': avg_mode,
+        'speechiness': avg_speechiness
+    }
 
-        print('================')
-        print('TARGET: ', target_track_dict)
+    logging.info('=====================')
+    logging.info('TARGET: ', )
+    logging.info(target_track_dict)
 
-        match_ids = find_closest_matches(language, target_track_dict)
-        tracks_stats = actions.get_tracks_stats(access_token, match_ids, self.session)
-        if help.is_auth_error(tracks_stats):
-            self.response.status_int = 401
-            json_error = json.dumps({'error': 'Insufficient authentication.'})
-            self.response.write(json_error)
-        elif help.is_client_error(tracks_stats):
-            self.response.status_int = 404
-            json_error = json.dumps({'error': 'Couldn\'t get tracks stats'})
-            self.response.write(json_error)
-        filtered_stats = actions.filter_stats(tracks_stats)
-        self.response.status_int = 200
-        self.response.write(json.dumps(filtered_stats))
+    match_ids = find_closest_matches(language, target_track_dict)
+    logging.debug(match_ids)
+    tracks_stats, access_token = actions.get_tracks_stats(
+        access_token, refresh_token, match_ids)
+    if help.is_auth_error(tracks_stats):
+        return flask.jsonify({
+            'error': {
+                'message': 'Insufficient authentication.',
+                'status': 401,
+            }
+        }), 401
+    elif help.is_client_error(tracks_stats):
+        logging.error('CLIENT ERROR')
+        return flask.jsonify({
+            'error': {
+                'message': 'Not found.',
+                'status': 404,
+            }
+        }), 404
+
+    filtered_stats = actions.filter_stats(tracks_stats)
+    return flask.jsonify(filtered_stats), 200
 
 
 @app.route('/logout', methods=['GET'])
-class Logout(BaseHandler):
+def logout():
     """Logout and clear the session"""
-    def get(self):
-        if flask.session:
-            actions.logout(flask.session)
-        self.redirect('/')
+    response = flask.make_response(flask.redirect('/'))
+    response.set_cookie(key='access_token', expires=0)
+    response.set_cookie(key='refresh_token', expires=0)
+    return response, 302
+
 
 @app.route('/play', methods=['POST'])
 def play():
-    def post(self):
-        data = flask.request.json
-        uri = data['uri']
-        # uri = self.request.get('uri')
-        access_token = flask.session.get('access_token')
-        access_token = flask.session.get('access_token')
+    """Play the song in Spotify."""
+    data = flask.request.json
+    uri = data['uri']
+    access_token = flask.session.get('access_token')
 
-        play_endpoint = 'http://api.spotify.com/v1/me/player/play'
-        headers = { 'Authorization' : 'Bearer ' + access_token }
-        data = { "uris": [uri] }
-        print(data)
-        play_response = requests.put(play_endpoint, headers=headers, data=data)
-        if response.status_code != 204:
-            print(response.text)
+    play_endpoint = 'http://api.spotify.com/v1/me/player/play'
+    headers = {'Authorization': 'Bearer ' + access_token}
+    data = {"uris": [uri]}
+    print(data)
+    play_response = requests.put(play_endpoint, headers=headers, data=data)
+    if response.status_code != 204:
+        print(response.text)
+
 
 @app.route('/create', methods=['POST'])
 def create():
-    """Create a new playlist."""
-    data = flask.request.json
+    """Create a new playlist on the user's Spotify account."""
+    data = flask.request.get_json()
     uris = data['uris']
-    access_token = flask.session.get('access_token')
+    access_token = flask.request.cookies.get('access_token')
+    refresh_token = flask.request.cookies.get('refresh_token')
 
-    self.response.headers['Content-Type'] = 'application/json'
-    if self.request.headers.get('Content_type') != 'application/json':
-        self.response.status_int = 400
-        json_error = json.dumps({'error': 'Data must be JSON.'})
-        self.response.write(json_error)
+    if not flask.request.is_json:
+        return flask.jsonify({
+            'error': {
+                'message': 'Data must be JSON.',
+                'status': 400,
+            }
+        }), 400
     if not uris:
-        self.response.status_int = 400
-        json_error = json.dumps({'error': 'Bad request.'})
-        self.response.write(json_error)
+        return flask.jsonify({
+            'error': {
+                'message': 'Bad request.',
+                'status': 400,
+            }
+        }), 400
     if not access_token:
-        # ???
-        pass
+        return flask.jsonify({
+            'error': {
+                'message': 'Insufficient authentication.',
+                'status': 401,
+            }
+        }), 401
 
-    user_id = actions.get_account_info(access_token, self.session)['id']
-    new_playlist_json = actions.create_playlist(access_token, user_id, self.session)
+    user_id, access_token = actions.get_account_info(
+        access_token, refresh_token)['id']
+    new_playlist_json = actions.create_playlist(
+        access_token, refresh_token, user_id)
     if help.is_auth_error(new_playlist_json):
-        self.response.status_int = 401
-        json_error = json.dumps({'error': 'Insufficient authentication.'})
-        self.response.write(json_error)
-        return
+        return flask.jsonify({
+            'error': {
+                'message': 'Insufficient authentication.',
+                'status': 401,
+            }
+        }), 401
     elif help.is_client_error(new_playlist_json):
-        self.response.status_int = 404
-        json_error = json.dumps({'error': 'Couldn\'t create playlist.'})
-        self.response.write(json_error)
-        return
+        return flask.jsonify({
+            'error': {
+                'message': 'Not found.',
+                'status': 404,
+            }
+        }), 404
     new_playlist_id = new_playlist_json['id']
 
-    add_tracks_json = actions.add_tracks_to_playlist(access_token, new_playlist_id, uris, self.session)
-    if help.is_auth_error(add_tracks_json):
-        self.response.status_int = 401
-        json_error = json.dumps({'error': 'Insufficient authentication.'})
-        self.response.write(json_error)
-        return
-    elif help.is_client_error(add_tracks_json):
-        self.response.status_int = 404
-        json_error = json.dumps({'error': 'Couldn\'t add tracks to playlist.'})
-        self.response.write(json_error)
-        return
+    add_tracks_json = actions.add_tracks_to_playlist(
+        access_token, refresh, new_playlist_id, uris)
+    if help.is_auth_error(tracks_stats):
+        return flask.jsonify({
+            'error': {
+                'message': 'Insufficient authentication.',
+                'status': 401,
+            }
+        }), 401
+    elif help.is_client_error(tracks_stats):
+        logging.error('CLIENT ERROR')
+        return flask.jsonify({
+            'error': {
+                'message': 'Not found.',
+                'status': 404,
+            }
+        }), 404
 
-    self.response.status_int = 200
-    self.response.write(json.dumps({ 'message': 'Successfully created playlist and added tracks.' }))
+    return flask.jsonify({
+        'message': 'Successfully created playlist and added tracks.'
+    }), 200
+
+
+@app.route('/delete', methods=['POST'])
+def delete():
+    tracks = db.collection('tracks').stream()
+    for elem in tracks:
+        logging.debug(
+            f'Deleting tracks {elem.id} => {elem.to_dict()}')
+        elem.reference.delete()
+
+    track_ids = db.collection('track_ids').stream()
+    for elem in track_ids:
+        logging.debug(
+            f'Deleting track id {elem.id} => {elem.to_dict()}')
+        elem.reference.delete()
+
+    playlist_ids = db.collection('playlist_ids').stream()
+    for elem in playlist_ids:
+        logging.debug(
+            f'Deleting playlist id {elem.id} => {elem.to_dict()}')
+        elem.reference.delete()
+
+    return flask.jsonify({}), 200
