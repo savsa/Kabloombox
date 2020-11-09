@@ -1,4 +1,5 @@
 $(document).ready(function() {
+
     $('#logout').click(function() {
         $.post('/logout', function() {
             location.reload(true);
@@ -19,7 +20,6 @@ $(document).ready(function() {
                 $(this).css({ transform: 'rotate(' + now + 'deg)' });
             }
         });
-
 
     });
 

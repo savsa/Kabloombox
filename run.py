@@ -48,13 +48,17 @@ else:
     main_command = "flask run --host localhost --port 8080 --reload"
 
 # Run firestore emulator
-emulator_command = 'gcloud beta emulators firestore start --project test --host-port "localhost:{}"'.format(emulator_port)
+emulator_command = 'gcloud beta emulators firestore start --project test --host-port "localhost:{}"'.format(
+    emulator_port
+)
 run_firestore = os.popen(emulator_command)
 
 # wait for the Emulator to start
 print("Checking if emulator has started yet...")
 while not emulator_started(port=emulator_port):
-    print("Emulator hasn't started yet. Let's wait 5 seconds and check again. (It may take a while, so please be patient.)")
+    print(
+        "Emulator hasn't started yet. Let's wait 5 seconds and check again. (It may take a while, so please be patient.)"
+    )
     time.sleep(10)
 
 print("Yaaay, the emulator is on! Now we can start our {}.".format(text_bottom))

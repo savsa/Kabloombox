@@ -1,0 +1,185 @@
+<html><head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,500,600" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,600" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Nunito:300,400,600" rel="stylesheet">
+    <link href="../static/css/playlist.css" rel="stylesheet">
+    <link href="../static/css/please-wait.css" rel="stylesheet">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="../static/javascript/please-wait.min.js"></script>
+
+
+    <!-- <script src="https://sdk.scdn.co/spotify-player.js"></script> -->
+    <script type="module" src="../static/javascript/js.cookie.min.js"></script>
+    <script nomodule="" defer="" src="../static/javascript/js.cookie.js"></script>
+
+    <title>Kabloombox</title>
+</head>
+<body class="pg-loaded">
+
+    <header>
+        <a href="/" id="logo">
+            <img src="../static/images/KabloomboxLogo.png" id="navbar-logo">
+        </a>
+        <div class="about-wrapper">
+            <ul id="blah">
+                <a href="/about"><li>About</li></a>
+            </ul>
+        </div>
+        <!-- <ul id="blah">
+            <a href="/about"><li>About</li></a>
+        </ul> -->
+        <nav>
+            <div class="navbar-profile-photo navbar-account">
+                
+                    <img src="../static/images/default.jpg" id="photo">
+                
+
+            </div>
+
+            
+                <div class="navbar-username navbar-account">
+                    <div class="container-2">
+                        <div class="dropdown">
+                            <div class="select">
+                                <span></span>
+                                <!-- <i class="fa fa-chevron-left"></i> -->
+                                <img src="../static/images/dropdown.png" id="arrow">
+                        </div>
+                        <a href="/logout">
+                            <ul class="dropdown-menu">
+                              <li>Logout</li>
+                            </ul>
+                        </a>
+                      </div>
+
+                    </div>
+                </div>
+            
+        </nav>
+    </header>
+    <div class="results">
+        <div class="result-playlist-header">
+            <img src="../static/images/playlist-photo.png" class="result-playlist-photo">
+            <div class="result-playlist-info">
+                <span id="result-playlist-name">Playlist Name</span>
+                <span id="result-playlist-language">German</span>
+
+                <form action="/create" method="post">
+                    <!-- <button class="result-playlist-add-button" type="submit"> -->
+                    <div class="result-playlist-add-button">
+                        <span class="add-text">Add this playlist</span>
+                        <span class="plus-symbol">
+                            <img src="https://img.icons8.com/nolan/20/000000/plus-math.png" draggable="false">
+                        </span>
+                    </div>
+                    <!-- </button> -->
+                </form>
+
+            </div>
+        </div>
+        <div class="result-playlist-body">
+            <div class="body-header">
+                <span class="body-header-title">Title</span>
+                <span class="body-header-artist">Artist</span>
+                <span class="body-header-length"><img src="../static/images/clock.png" draggable="false"></span>
+                <span class="body-header-preview">Preview</span>
+            </div>
+    <!-- <div class="result-playlist-track">
+            <span id="result-track-title">${title}</span>
+            <span id="result-track-artist">${artist}</span>
+            <span id="result-track-length">${duration_m}:${duration_s}</span>
+            <div class="play-container result-track-preview">
+                <audio class="player" src="${preview_url}" preload="none" onended="on_playing_ended(this);"></audio>
+                <div class="player-button play-icon"></div>
+            </div>
+        </div> -->
+        <div class="result-playlist-track">
+    <span class="result-track-title">Am seidenen Faden</span>
+    <span class="result-track-artist">Tim Bendzko</span>
+    <span class="result-track-length">3:59</span>
+    <div class="play-container result-track-preview">
+        <audio class="player" src="https://p.scdn.co/mp3-preview/c993272b78c2ace80c021b73f24eb2f3d095f681?cid=add9ec1e2d134f5d8bc0144a81bab40c" preload="none" onended="on_playing_ended(this);"></audio>
+        <div class="player-button play-icon"></div>
+    </div>
+</div><div class="result-playlist-track">
+    <span class="result-track-title">Wenn du tanzt</span>
+    <span class="result-track-artist">Von Wegen Lisbeth</span>
+    <span class="result-track-length">3:50</span>
+    <div class="play-container result-track-preview">
+        <audio class="player" src="https://p.scdn.co/mp3-preview/deb7ff6acf3769d3f7ac22c6fe99e883878bd4df?cid=add9ec1e2d134f5d8bc0144a81bab40c" preload="none" onended="on_playing_ended(this);"></audio>
+        <div class="player-button play-icon"></div>
+    </div>
+</div><div class="result-playlist-track">
+    <span class="result-track-title">Erobert &amp; geklaut</span>
+    <span class="result-track-artist">Die Höchste Eisenbahn</span>
+    <span class="result-track-length">4:36</span>
+    <div class="play-container"></div>
+</div><div class="result-playlist-track">
+    <span class="result-track-title">Keramik</span>
+    <span class="result-track-artist">Oehl</span>
+    <span class="result-track-length">3:29</span>
+    <div class="play-container result-track-preview">
+        <audio class="player" src="https://p.scdn.co/mp3-preview/d058c38af4e8dff848d21c543f534e1ae4c716ca?cid=add9ec1e2d134f5d8bc0144a81bab40c" preload="none" onended="on_playing_ended(this);"></audio>
+        <div class="player-button play-icon"></div>
+    </div>
+</div><div class="result-playlist-track">
+    <span class="result-track-title">Hund ohne Leine</span>
+    <span class="result-track-artist">Veedel Kaztro</span>
+    <span class="result-track-length">3:49</span>
+    <div class="play-container"></div>
+</div><div class="result-playlist-track">
+    <span class="result-track-title">Wasser durch Stein</span>
+    <span class="result-track-artist">Mikroboy</span>
+    <span class="result-track-length">3:28</span>
+    <div class="play-container result-track-preview">
+        <audio class="player" src="https://p.scdn.co/mp3-preview/afdcba97f142b8d2cdec0e5d8498c7ddc47eeebb?cid=add9ec1e2d134f5d8bc0144a81bab40c" preload="none" onended="on_playing_ended(this);"></audio>
+        <div class="player-button play-icon"></div>
+    </div>
+</div><div class="result-playlist-track">
+    <span class="result-track-title">Vorwärts ist keine Richtung</span>
+    <span class="result-track-artist">Spaceman Spiff</span>
+    <span class="result-track-length">3:42</span>
+    <div class="play-container"></div>
+</div><div class="result-playlist-track">
+    <span class="result-track-title">Weil ich dich liebe - Remastered</span>
+    <span class="result-track-artist">Westernhagen</span>
+    <span class="result-track-length">4:46</span>
+    <div class="play-container result-track-preview">
+        <audio class="player" src="https://p.scdn.co/mp3-preview/768c92fcadf8d5de4724c3a0252cd9ff11ed718e?cid=add9ec1e2d134f5d8bc0144a81bab40c" preload="none" onended="on_playing_ended(this);"></audio>
+        <div class="player-button play-icon"></div>
+    </div>
+</div><div class="result-playlist-track">
+    <span class="result-track-title">Blockbasta</span>
+    <span class="result-track-artist">ASD</span>
+    <span class="result-track-length">3:39</span>
+    <div class="play-container result-track-preview">
+        <audio class="player" src="https://p.scdn.co/mp3-preview/6c76074a4861187920302f6051346b7dce1bb154?cid=add9ec1e2d134f5d8bc0144a81bab40c" preload="none" onended="on_playing_ended(this);"></audio>
+        <div class="player-button play-icon"></div>
+    </div>
+</div><div class="result-playlist-track">
+    <span class="result-track-title">Bologna</span>
+    <span class="result-track-artist">Wanda</span>
+    <span class="result-track-length">3:34</span>
+    <div class="play-container result-track-preview">
+        <audio class="player" src="https://p.scdn.co/mp3-preview/f738bd898e55513f1d6ca11488d8ddefb0e47add?cid=add9ec1e2d134f5d8bc0144a81bab40c" preload="none" onended="on_playing_ended(this);"></audio>
+        <div class="player-button play-icon"></div>
+    </div>
+</div></div>
+        
+    </div>
+
+
+    <script type="text/javascript">
+        window.appConfig = {
+            access_token: 'BQAYiprvwiNZ_AUXIWYP0J42PJQhXwBXgZlUJsql4GGfjr050uFX-3xsdlbz02P_CXywdJUTfQw6o8yqsSOQN7kVZn2bQ7O5_xoNGx8tegJenBEkTDj5U9ehgc3JrfNKDVWxTod9sKOfGnKJYK87rFwjV78QcQHEkm9Dcc4JFvxUDkEAKyxZu37O5HR3VjQrI-Zx1Aj3Y-oK-NcfG15uCbYfS-dP8J6d62gQopTdZWAtbwD2V7XVdg'
+        }
+    </script>
+    <script src="../static/javascript/playlist.js"></script>
+
+
+
+
+
+</body></html>

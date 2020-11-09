@@ -110,7 +110,9 @@ The project's logging level with Flask is **DEBUG**, so use this line for loggin
 
 `print()` will not work.
 
+## Formatting
 
+Kabloombox is formatted with [black](https://www.mattlayman.com/blog/2018/python-code-black).
 
 
 ## Useful links

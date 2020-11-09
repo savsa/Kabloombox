@@ -10,7 +10,16 @@
     <link href="../static/css/please-wait.css" rel="stylesheet">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
     <script src="../static/javascript/please-wait.min.js"></script>
-    <script src="../static/javascript/playlist.js"></script>
+
+
+    <link rel="icon" type="image/png" sizes="32x32" href="../static/images/favicons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="../static/images/favicons/favicon-96x96.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="../static/images/favicons/favicon-16x16.png">
+
+    <!-- <script src="https://sdk.scdn.co/spotify-player.js"></script> -->
+    <script type="module" src="../static/javascript/js.cookie.min.js"></script>
+    <script nomodule defer src="../static/javascript/js.cookie.js"></script>
+
     <title>Kabloombox</title>
 </head>
 <body>
@@ -32,7 +41,7 @@
                 {% if access_token and profile_photo %}
                     <img src={{ profile_photo}} id="photo" />
                 {% elif access_token %}
-                    <img src="../static/images/default.png" id="photo" />
+                    <img src="../static/images/default.jpg" id="photo" />
                 {% endif %}
 
             </div>
@@ -62,7 +71,7 @@
         <div class="result-playlist-header">
             <img src="../static/images/playlist-photo.png" class="result-playlist-photo"></img>
             <div class="result-playlist-info">
-                <span id="result-playlist-name">Playlist Name</span>
+                <span id="result-playlist-name"><input type="text" placeholder="Title" class="input-title"></span>
                 <span id="result-playlist-language">German</span>
 
                 <form action="/create" method="post">
@@ -83,9 +92,31 @@
                 <span class="body-header-title">Title</span>
                 <span class="body-header-artist">Artist</span>
                 <span class="body-header-length"><img src="../static/images/clock.png" draggable="false"></span>
+                <span class="body-header-preview">Preview</span>
             </div>
+    <!-- <div class="result-playlist-track">
+            <span id="result-track-title">${title}</span>
+            <span id="result-track-artist">${artist}</span>
+            <span id="result-track-length">${duration_m}:${duration_s}</span>
+            <div class="play-container result-track-preview">
+                <audio class="player" src="${preview_url}" preload="none" onended="on_playing_ended(this);"></audio>
+                <div class="player-button play-icon"></div>
+            </div>
+        </div> -->
         </div>
+        
     </div>
+
+
+    <script type="text/javascript">
+        window.appConfig = {
+            access_token: '{{ access_token }}'
+        }
+    </script>
+    <script src="../static/javascript/playlist.js"></script>
+
+
+
 
 </body>
 </html>
